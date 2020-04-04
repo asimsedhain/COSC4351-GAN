@@ -1,5 +1,7 @@
 #!/bin/bash
 
+
+# problem here
 module load intel/18.0.2 python3/3.7.0
 echo "python loaded"
 

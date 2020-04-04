@@ -11,7 +11,7 @@ import numpy as np
 import cv2 as cv
 import os 
 import time
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import re
 import pathlib
 
@@ -83,34 +83,34 @@ def getDataset(path):
 train_dataset = getDataset(TRAINING_PATH)
 
 # Helper method for saving an output file while training.
-def save_images(cnt,dataset):
+# def save_images(cnt,dataset):
 
-    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
-    sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
+#     sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
+#     sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
 
-    generated_images = generator.predict(sample_images_input)
-    generated_images = tf.concat([sample_images_input, generated_images], 3) 
-    generated_images = tf.image.yuv_to_rgb(generated_images)
-    generated_images = generated_images.numpy()
-    sample_images = tf.image.yuv_to_rgb(sample_images)
-    sample_images = sample_images.numpy()
+#     generated_images = generator.predict(sample_images_input)
+#     generated_images = tf.concat([sample_images_input, generated_images], 3) 
+#     generated_images = tf.image.yuv_to_rgb(generated_images)
+#     generated_images = generated_images.numpy()
+#     sample_images = tf.image.yuv_to_rgb(sample_images)
+#     sample_images = sample_images.numpy()
     
 
-    fig = plt.figure(figsize=(20, 10))
-    plt.tight_layout()
-    for i in range(16):
-        plt.subplot(4,8,(2*i) +1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title("Ground Truth")
-        plt.imshow(sample_images[i])
-        plt.subplot(4,8,(2*i) + 2)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title("Model Generated")
-        plt.imshow(generated_images[i])
-    fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
-    plt.close(fig)
+#     fig = plt.figure(figsize=(20, 10))
+#     plt.tight_layout()
+#     for i in range(16):
+#         plt.subplot(4,8,(2*i) +1)
+#         plt.xticks([])
+#         plt.yticks([])
+#         plt.title("Ground Truth")
+#         plt.imshow(sample_images[i])
+#         plt.subplot(4,8,(2*i) + 2)
+#         plt.xticks([])
+#         plt.yticks([])
+#         plt.title("Model Generated")
+#         plt.imshow(generated_images[i])
+#     fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
+#     plt.close(fig)
 
 
 
