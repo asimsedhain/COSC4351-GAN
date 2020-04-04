@@ -71,7 +71,7 @@ def getDataset(path):
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
 		image = tf.io.read_file(filename)
-		image = tf.image.decode_jpeg(image)
+		image = tf.image.decode_image(image)
 		image = tf.image.convert_image_dtype(image, tf.float32)
 		shape = tf.shape(image)
 		cond = tf.math.equal(tf.constant(1), shape[2])
