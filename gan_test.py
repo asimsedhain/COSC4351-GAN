@@ -73,6 +73,9 @@ def getDataset(path):
 		image = tf.io.read_file(filename)
 		image = tf.image.decode_jpeg(image)
 		image = tf.image.convert_image_dtype(image, tf.float32)
+		shape = tf.shape(image)
+		cond = tf.math.equal(tf.constant(1), shape[2])
+		image = tf.cond(cond, lambda: tf.image.grayscale_to_rgb(image), lambda: image)
 		image = tf.image.rgb_to_yuv(image)
 		image = tf.image.resize(image, [128, 128])
 		return image
