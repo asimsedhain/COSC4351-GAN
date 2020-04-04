@@ -68,7 +68,7 @@ print(f"Will generate {GENERATE_SQUARE}px square images.")
 
 def getDataset(path):
 	train_path = pathlib.Path(path)
-	list_ds = tf.data.Dataset.list_files(str(train/'*'))
+	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
 		image = tf.io.read_file(filename)
 		image = tf.image.decode_jpeg(image)
@@ -77,7 +77,7 @@ def getDataset(path):
 		image = tf.image.resize(image, [128, 128])
 		return image
 	img_ds = list_ds.map(parse_image)
-	return img_ds.shuffle(BUFFER_SIZE).Batch(BATCH_SIZE)
+	return img_ds.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
 
 train_dataset = getDataset(TRAINING_PATH)
@@ -264,7 +264,7 @@ def generator_loss(fake_output, real_images, gen_images ):
 generator_optimizer = tf.keras.optimizers.Adam(2e-4,0.5)
 discriminator_optimizer = tf.keras.optimizers.Adam(2e-4,0.5)
 
-@tf.function
+
 def train_step(images):
   
 	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
