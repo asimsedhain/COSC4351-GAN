@@ -15,9 +15,17 @@ import os
 import time
 import matplotlib.pyplot as plt
 import re
+import pathlib
+
+tf.compat.v1.enable_eager_execution(
+    config=None, device_policy=None, execution_mode=None
+)
+
+
+# configration
+
 
 """Change the INITIAL_TRAINING variable to decide if model is to be loaded from memory or trained again."""
-
 INITIAL_TRAINING = True
 
 
@@ -39,7 +47,12 @@ PREVIEW_MARGIN = 16
 SEED_SIZE = 100
 
 # Configuration
-DATA_PATH = '/content/drive/My Drive/projects/train'
+TRAINING_PATH = "../val_set"
+
+DATA_PATH = "./"
+
+
+
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
 GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_5.h5")
 DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_5.h5")
@@ -51,58 +64,57 @@ BUFFER_SIZE = 60000
 
 print(f"Will generate {GENERATE_SQUARE}px square images.")
 
-# importing the file
-training_binary_path = os.path.join(DATA_PATH,f'training_data_lab_{GENERATE_SQUARE}_{GENERATE_SQUARE}.npy')
-
-print(f"Looking for file: {training_binary_path}")
-
-if not os.path.isfile(training_binary_path):
-	print("No pickle found... Please run with the correct file")
-else:
-	print("Loading previous training pickle...")
-	training_data = np.load(training_binary_path)
 
 
 
-# converting the np.uint8 file to np.float32 and scaling the values to be between -1 and 1
-training_data = training_data.astype(np.float32)
-training_data = ((training_data/127.5)-1)
 
-training_data.shape
+def getDataset(path):
+	train_path = pathlib.Path(path)
+	list_ds = tf.data.Dataset.list_files(str(train/'*'))
+	def parse_image(filename):
+		image = tf.io.read_file(filename)
+		image = tf.image.decode_jpeg(image)
+		image = tf.image.convert_image_dtype(image, tf.float32)
+		image = tf.image.rgb_to_yuv(image)
+		image = tf.image.resize(image, [128, 128])
+		return image
+	img_ds = list_ds.map(parse_image)
+	return img_ds.shuffle(BUFFER_SIZE).Batch(BATCH_SIZE)
 
-# Batch and shuffle the data
-train_dataset = tf.data.Dataset.from_tensor_slices(training_data).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+
+train_dataset = getDataset(TRAINING_PATH)
 
 # Helper method for saving an output file while training.
+def save_images(cnt,dataset):
 
-def save_images(cnt,noise):
-	image_array = np.full(( 
-		PREVIEW_MARGIN + (PREVIEW_ROWS * (GENERATE_SQUARE+PREVIEW_MARGIN)), 
-		PREVIEW_MARGIN + (PREVIEW_COLS * (GENERATE_SQUARE+PREVIEW_MARGIN)), 3), 
-		255, dtype=np.uint8)
+    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
+    sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
 
-	generated_images = generator.predict(noise)
-	generated_images = tf.concat([noise, generated_images], 3) 
-	generated_images= (generated_images+1)*127.5
-	generated_images = generated_images.numpy()
-	generated_images = [cv.cvtColor(i, cv.COLOR_LAB2RGB) for i in generated_images.astype(np.uint8)]
-  
-  
-	fig = plt.figure(figsize=(20, 10))
-	plt.tight_layout()
-	for i in range(16):
-		plt.subplot(4,8,(2*i) +1)
-		plt.xticks([])
-		plt.yticks([])
-		plt.title("Ground Truth")
-		plt.imshow(temp[i])
-		plt.subplot(4,8,(2*i) + 2)
-		plt.xticks([])
-		plt.yticks([])
-		plt.title("Model Generated")
-		plt.imshow(temp_out[i])
+    generated_images = generator.predict(sample_images_input)
+    generated_images = tf.concat([sample_images_input, generated_images], 3) 
+    generated_images = tf.image.yuv_to_rgb(generated_images)
+    generated_images = generated_images.numpy()
+    sample_images = tf.image.yuv_to_rgb(sample_images)
+    sample_images = sample_images.numpy()
+    
 
-	fig.savefig(os.path.join(DATA_PATH,'output/current_3.png'), dpi =fig.dpi)
+    fig = plt.figure(figsize=(20, 10))
+    plt.tight_layout()
+    for i in range(16):
+        plt.subplot(4,8,(2*i) +1)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title("Ground Truth")
+        plt.imshow(sample_images[i])
+        plt.subplot(4,8,(2*i) + 2)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title("Model Generated")
+        plt.imshow(generated_images[i])
+    fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
+    plt.close(fig)
+
+
 
 # generator code
 
@@ -223,12 +235,16 @@ else:
 		generator = tf.keras.models.load_model(GENERATOR_PATH)
 		print("Generator loaded")
 	else:
+		assert(os.path.isfile(GENERATOR_PATH), True)
 		print("No generator file found")
 	if os.path.isfile(DISCRIMINATOR_PATH):
+		
 		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
 		print("Discriminator loaded")
 	else:
+		assert(os.path.isfile(GENERATOR_PATH), True)
 		print("No discriminator file found")
+		
 
 
 
@@ -274,8 +290,7 @@ def train_step(images):
 
 def train(dataset, epochs):
 	start = time.time()
-	k=20
-	fixed_seed = tf.reshape(training_data[k:PREVIEW_COLS*PREVIEW_ROWS +k, :, :, 0],(PREVIEW_COLS*PREVIEW_ROWS, GENERATE_SQUARE, GENERATE_SQUARE, 1))
+	
 	for epoch in range(epochs):
 		epoch_start = time.time()
 
@@ -292,7 +307,7 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
-		save_images(epoch,fixed_seed)
+		save_images(epoch,dataset)
 		if(epoch%5==0):
 			print(f"Saving Model for epoch {epoch}")
 			generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
@@ -316,45 +331,11 @@ discriminator.save(os.path.join(MODEL_PATH,"color_discriminator_main.h5"))
 
 
 
-for i in range(50):
-  save_images(f"test_{i}",tf.reshape(training_data[(PREVIEW_COLS*PREVIEW_ROWS)*i:(PREVIEW_COLS*PREVIEW_ROWS)*(i+1),:,:,0],(PREVIEW_COLS*PREVIEW_ROWS, GENERATE_SQUARE, GENERATE_SQUARE, 1)) )
 
 
 
 
 
-k = 905
-temp = training_data[k:PREVIEW_COLS*PREVIEW_ROWS+k].copy()
-# temp.shape
-temp_in = tf.reshape(temp[:, :, :, 0],(PREVIEW_COLS*PREVIEW_ROWS, GENERATE_SQUARE, GENERATE_SQUARE, 1))
-temp_out = generator(temp_in)
 
 
-
-
-
-temp_out = tf.concat([temp_in, temp_out], 3) 
-temp_out= (temp_out+1)*127.5
-temp_out = temp_out.numpy()
-temp_out = [cv.cvtColor(i, cv.COLOR_LAB2RGB) for i in temp_out.astype(np.uint8)]
-
-# temp = temp.numpy()
-temp = (temp+1)*127.5
-temp = [cv.cvtColor(i, cv.COLOR_LAB2RGB) for i in temp.astype(np.uint8)]
-
-fig = plt.figure(figsize=(20, 10))
-plt.tight_layout()
-for i in range(16):
-  plt.subplot(4,8,(2*i) +1)
-  plt.xticks([])
-  plt.yticks([])
-  plt.title("Ground Truth")
-  plt.imshow(temp[i])
-  plt.subplot(4,8,(2*i) + 2)
-  plt.xticks([])
-  plt.yticks([])
-  plt.title("Model Generated")
-  plt.imshow(temp_out[i])
-
-fig.savefig(os.path.join(DATA_PATH,'output/current_3.png'), dpi =fig.dpi)
 
