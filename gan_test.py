@@ -9,8 +9,6 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
 import numpy as np
 import cv2 as cv
-from PIL import Image
-from tqdm import tqdm
 import os 
 import time
 import matplotlib.pyplot as plt
@@ -53,9 +51,9 @@ DATA_PATH = "./"
 
 
 
-MODEL_PATH = os.path.join(DATA_PATH,"Models")
-GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_5.h5")
-DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_5.h5")
+# MODEL_PATH = os.path.join(DATA_PATH,"Models")
+# GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_5.h5")
+# DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_5.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 128
@@ -229,21 +227,21 @@ if(INITIAL_TRAINING):
 	generator = build_generator()
 	discriminator = build_discriminator()
 	print("Generator and Discriminator initialized")
-else:
-	print("Loading model from memory")
-	if os.path.isfile(GENERATOR_PATH):
-		generator = tf.keras.models.load_model(GENERATOR_PATH)
-		print("Generator loaded")
-	else:
-		assert(os.path.isfile(GENERATOR_PATH), True)
-		print("No generator file found")
-	if os.path.isfile(DISCRIMINATOR_PATH):
+# else:
+# 	print("Loading model from memory")
+# 	if os.path.isfile(GENERATOR_PATH):
+# 		generator = tf.keras.models.load_model(GENERATOR_PATH)
+# 		print("Generator loaded")
+# 	else:
+# 		assert(os.path.isfile(GENERATOR_PATH), True)
+# 		print("No generator file found")
+# 	if os.path.isfile(DISCRIMINATOR_PATH):
 		
-		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
-		print("Discriminator loaded")
-	else:
-		assert(os.path.isfile(GENERATOR_PATH), True)
-		print("No discriminator file found")
+# 		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
+# 		print("Discriminator loaded")
+# 	else:
+# 		assert(os.path.isfile(GENERATOR_PATH), True)
+# 		print("No discriminator file found")
 		
 
 
@@ -307,11 +305,11 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
-		save_images(epoch,dataset)
-		if(epoch%5==0):
-			print(f"Saving Model for epoch {epoch}")
-			generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-			discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+		# save_images(epoch,dataset)
+		# if(epoch%5==0):
+		# 	print(f"Saving Model for epoch {epoch}")
+		# 	generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+		# 	discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
