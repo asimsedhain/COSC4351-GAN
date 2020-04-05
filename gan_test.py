@@ -71,11 +71,11 @@ def getDataset(path):
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
 		image = tf.io.read_file(filename)
-		image = tf.image.decode_image(image)
+		image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
 		image = tf.image.convert_image_dtype(image, tf.float32)
-		shape = tf.shape(image)
-		cond = tf.math.equal(tf.constant(1), shape[2])
-		image = tf.cond(cond, lambda: tf.image.grayscale_to_rgb(image), lambda: image)
+
+	
+		
 		image = tf.image.rgb_to_yuv(image)
 		image = tf.image.resize(image, [128, 128])
 		return image
