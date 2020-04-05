@@ -6,7 +6,8 @@ from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, Bat
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.layers import UpSampling2D, Conv2D
 from tensorflow.keras.models import Sequential, Model, load_model
-from tensorflow.keras.optimizers import Adam
+# from tensorflow.keras.optimizers import Adam
+from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
 import cv2 as cv
 import os 
