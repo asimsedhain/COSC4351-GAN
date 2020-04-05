@@ -9,7 +9,7 @@ from tensorflow.keras.models import Sequential, Model, load_model
 # from tensorflow.keras.optimizers import Adam
 from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
-import cv2 as cv
+
 import os 
 import time
 # import matplotlib.pyplot as plt
@@ -46,7 +46,7 @@ PREVIEW_MARGIN = 16
 SEED_SIZE = 100
 
 # Configuration
-TRAINING_PATH = "../val_set"
+TRAINING_PATH = "../test"
 
 DATA_PATH = "./"
 
@@ -265,8 +265,8 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output, real_images, gen_images ):
 	return cross_entropy(tf.ones_like(fake_output), fake_output) + 100*mean_absolute(real_images, gen_images)
 
-generator_optimizer = tf.keras.optimizers.Adam(2e-4,0.5)
-discriminator_optimizer = tf.keras.optimizers.Adam(2e-4,0.5)
+generator_optimizer = Adam(2e-4,0.5)
+discriminator_optimizer = Adam(2e-4,0.5)
 
 
 def train_step(images):
@@ -279,15 +279,15 @@ def train_step(images):
 		real_output = discriminator(real, training=True)
 		fake_output = discriminator(generated_images, training=True)
 
-	gen_loss = generator_loss(fake_output, real, generated_images)
-	disc_loss = discriminator_loss(real_output, fake_output)
+		gen_loss = generator_loss(fake_output, real, generated_images)
+		disc_loss = discriminator_loss(real_output, fake_output)
 
 
-	gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-	gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+		gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+		gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
-	generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-	discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+		generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+		discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
 	return gen_loss,disc_loss
 
 def train(dataset, epochs):
