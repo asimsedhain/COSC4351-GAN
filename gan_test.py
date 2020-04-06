@@ -46,7 +46,7 @@ PREVIEW_MARGIN = 16
 SEED_SIZE = 100
 
 # Configuration
-TRAINING_PATH = "../test"
+TRAINING_PATH = "../val_set"
 
 DATA_PATH = "./"
 
@@ -59,7 +59,6 @@ DATA_PATH = "./"
 EPOCHS = 50
 BATCH_SIZE = 32
 BUFFER_SIZE = 60000
-
 
 print(f"Will generate {GENERATE_SQUARE}px square images.")
 
@@ -85,7 +84,7 @@ def getDataset(path):
 
 
 train_dataset = getDataset(TRAINING_PATH)
-train_dataset = mirrored_strategy.make_dataset_iterator(train_dataset)
+
 
 # Helper method for saving an output file while training.
 # def save_images(cnt,dataset):
@@ -272,7 +271,7 @@ def generator_loss(fake_output, real_images, gen_images ):
 
 
 
-@tf.function
+
 def train_step(images):
   
 	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
@@ -299,24 +298,25 @@ def train(dataset, epochs):
 	
 	for epoch in range(epochs):
 		epoch_start = time.time()
-
+		dist_dataset = mirrored_strategy.make_dataset_iterator(dataset)
 		# gen_loss_list = []
 		# disc_loss_list = []
 
 		with mirrored_strategy.scope():
-			t = mirrored_strategy.experimental_run(train_step, dataset)
+			t = mirrored_strategy.experimental_run(train_step, dist_dataset)
 			# for image_batch in dataset:
 			# 	t = mirrored_strategy.run(train_step, args=(image_batch,))
 			# 	# t = train_step(image_batch)
 			# 	gen_loss_list.append(t[0])
 			# 	disc_loss_list.append(t[1])
+			g_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[0])
+			d_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[1])
 
-		# g_loss = sum(gen_loss_list) / len(gen_loss_list)
-		# d_loss = sum(disc_loss_list) / len(disc_loss_list)
 
 		epoch_elapsed = time.time()-epoch_start
-		# print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
-		print(f"Log: {t} \t time: {epoch_elapsed}")
+		
+		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
+		
 		# save_images(epoch,dataset)
 		# if(epoch%5==0):
 		# 	print(f"Saving Model for epoch {epoch}")
@@ -333,19 +333,10 @@ train(train_dataset, 100)
 
 
 # saving the model to disk
+
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
-generator.save(os.path.join(MODEL_PATH,"color_generator_main.h5"))
-discriminator.save(os.path.join(MODEL_PATH,"color_discriminator_main.h5"))
-
-
-
-
-
-
-
-
-
-
-
-
+with mirrored_strategy.scope():
+	generator.save(os.path.join(MODEL_PATH,"color_generator_main.h5"))
+	discriminator.save(os.path.join(MODEL_PATH,"color_discriminator_main.h5"))
+	print(f"Models save to {MODEL_PATH}")
 
