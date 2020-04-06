@@ -1,3 +1,4 @@
 gan_training.*
 output
 Models
+output_*

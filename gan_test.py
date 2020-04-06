@@ -61,7 +61,7 @@ DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_main.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 32
-BUFFER_SIZE = 60000
+BUFFER_SIZE = 20000
 
 print(f"Will generate {GENERATE_SQUARE}px square images.")
 
@@ -124,7 +124,7 @@ def save_images(cnt,dataset):
 	
 	generated_images = tf.concat([y[0], generated_images],3) 
 
-	generated_images = preprocess_yuv(generated_images)
+	generated_images = tf.image.yuv_to_rgb(generated_images)
 	generated_images = generated_images.numpy()
 	sample_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
 	sample_images = sample_images.numpy()
