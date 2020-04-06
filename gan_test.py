@@ -118,7 +118,7 @@ def save_images(cnt,dataset):
         plt.imshow(generated_images[i])
     fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
     plt.close(fig)
-    print(f"Saved Image: {test_cnt.png}")
+    print(f"Saved Image: test_{cnt}.png")
 
 
 # generator code
