@@ -110,21 +110,23 @@ def preprocess_yuv(yuv_images):
 	v = v * (target_uv_max - target_uv_min) + target_uv_min
 	preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 	rgb_tensor_images = tf.image.yuv_to_rgb(preprocessed_yuv_images)
-
+	return rgb_tensor_images
 
 # Helper method for saving an output file while training.
 def save_images(cnt,dataset):
 	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
-	sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
-	# last_dimension_axis = len(sample_images_input.shape) - 1
-	# y, u, v = tf.split(sample_images_input, 3, axis=last_dimension_axis)
-	generated_images = generator.predict(sample_images_input)
-	sample_images_input = tf.add(sample_images_input, 0.5)
-	generated_images = tf.concat([sample_images_input, generated_images], 3) 
+	#sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
+	last_dimension_axis = len(sample_images.shape) - 1
+	y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
+	generated_images = generator.predict(y[0])
+	y = tf.add(y, 0.5)
+	#sample_images_input = tf.add(sample_images_input, 0.5)
+	
+	generated_images = tf.concat([y[0], generated_images],3) 
 
 	generated_images = preprocess_yuv(generated_images)
 	generated_images = generated_images.numpy()
-	sample_images = tf.image.yuv_to_rgb(tf.concat([sample_images_input, sample_images[:, :, :, 1:]], 3))
+	sample_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
 	sample_images = sample_images.numpy()
     
 
@@ -268,14 +270,14 @@ with mirrored_strategy.scope():
 			generator = tf.keras.models.load_model(GENERATOR_PATH)
 			print("Generator loaded")
 		else:
-			assert(os.path.isfile(GENERATOR_PATH), True)
+		
 			print("No generator file found")
 		if os.path.isfile(DISCRIMINATOR_PATH):
 			
 			discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
 			print("Discriminator loaded")
 		else:
-			assert(os.path.isfile(GENERATOR_PATH), True)
+	
 			print("No discriminator file found")
 		
 

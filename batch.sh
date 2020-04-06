@@ -3,13 +3,13 @@
 
 
 #SBATCH -J gan_training
-#SBATCH -o gan_training.o%j
-#SBATCH -e gan_training.e%j
+#SBATCH -o output_o.o%j
+#SBATCH -e output_e.e%j
 #SBATCH -p gtx
-#SBATCH -N 4
+#SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -t 08:00:00
-#SBATCH --mail-user=asedhain@tacc.utexas.edu
+#SBATCH -t 05:00:00
+#SBATCH --mail-user=asedhain@patriots.uttyler.edu
 #SBATCH -A COSC4381Spring2020
 
 
