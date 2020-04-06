@@ -55,9 +55,9 @@ MODEL_PATH = os.path.join(DATA_PATH,"Models")
 
 
 
-# MODEL_PATH = os.path.join(DATA_PATH,"Models")
-# GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_5.h5")
-# DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_5.h5")
+MODEL_PATH = os.path.join(DATA_PATH,"Models")
+GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_main.h5")
+DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_main.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 32
@@ -81,44 +81,69 @@ def getDataset(path):
 		
 		image = tf.image.rgb_to_yuv(image)
 		image = tf.image.resize(image, [128, 128])
-		return image
+		last_dimension_axis = len(image.shape) - 1
+		y, u, v = tf.split(image, 3, axis=last_dimension_axis)
+		y = tf.subtract(y, 0.5)
+		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
+		return preprocessed_yuv_images
 	img_ds = list_ds.map(parse_image)
 	return img_ds.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
 
 train_dataset = getDataset(TRAINING_PATH)
 
+def preprocess_yuv(yuv_images):
+	last_dimension_axis = len(yuv_images.shape) - 1
+	yuv_tensor_images = tf.truediv(
+	tf.subtract(
+		yuv_images,
+		tf.reduce_min(yuv_images)
+	),
+	tf.subtract(
+		tf.reduce_max(yuv_images),
+		tf.reduce_min(yuv_images)
+		)
+	)
+	y, u, v = tf.split(yuv_tensor_images, 3, axis=last_dimension_axis)
+	target_uv_min, target_uv_max = -0.5, 0.5
+	u = u * (target_uv_max - target_uv_min) + target_uv_min
+	v = v * (target_uv_max - target_uv_min) + target_uv_min
+	preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
+	rgb_tensor_images = tf.image.yuv_to_rgb(preprocessed_yuv_images)
+
 
 # Helper method for saving an output file while training.
 def save_images(cnt,dataset):
+	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
+	sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
+	# last_dimension_axis = len(sample_images_input.shape) - 1
+	# y, u, v = tf.split(sample_images_input, 3, axis=last_dimension_axis)
+	generated_images = generator.predict(sample_images_input)
+	sample_images_input = tf.add(sample_images_input, 0.5)
+	generated_images = tf.concat([sample_images_input, generated_images], 3) 
 
-    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
-    sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
-
-    generated_images = generator.predict(sample_images_input)
-    generated_images = tf.concat([sample_images_input, generated_images], 3) 
-    generated_images = tf.image.yuv_to_rgb(generated_images)
-    generated_images = generated_images.numpy()
-    sample_images = tf.image.yuv_to_rgb(sample_images)
-    sample_images = sample_images.numpy()
+	generated_images = preprocess_yuv(generated_images)
+	generated_images = generated_images.numpy()
+	sample_images = tf.image.yuv_to_rgb(tf.concat([sample_images_input, sample_images[:, :, :, 1:]], 3))
+	sample_images = sample_images.numpy()
     
 
-    fig = plt.figure(figsize=(20, 10))
+	fig = plt.figure(figsize=(20, 10))
 
-    for i in range(16):
-        plt.subplot(4,8,(2*i) +1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title("Ground Truth")
-        plt.imshow(sample_images[0, i])
-        plt.subplot(4,8,(2*i) + 2)
-        plt.xticks([])
-        plt.yticks([])
-        plt.title("Model Generated")
-        plt.imshow(generated_images[i])
-    fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
-    plt.close(fig)
-    print(f"Saved Image: test_{cnt}.png")
+	for i in range(16):
+		plt.subplot(4,8,(2*i) +1)
+		plt.xticks([])
+		plt.yticks([])
+		plt.title("Ground Truth")
+		plt.imshow(sample_images[0, i])
+		plt.subplot(4,8,(2*i) + 2)
+		plt.xticks([])
+		plt.yticks([])
+		plt.title("Model Generated")
+		plt.imshow(generated_images[i])
+	fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
+	plt.close(fig)
+	print(f"Saved Image: test_{cnt}.png")
 
 
 # generator code
@@ -228,9 +253,8 @@ def build_discriminator(image_shape = (GENERATE_SQUARE, GENERATE_SQUARE, 2)):
 
 
 # Checks if you want to continue training model from disk or start a new
-
-if(INITIAL_TRAINING):
-	with mirrored_strategy.scope():
+with mirrored_strategy.scope():
+	if(INITIAL_TRAINING):	
 		print("Initializing Generator and Discriminator")
 		generator = build_generator()
 		discriminator = build_discriminator()
@@ -238,21 +262,21 @@ if(INITIAL_TRAINING):
 		generator_optimizer = Adam(2e-4,0.5)
 		discriminator_optimizer = Adam(2e-4,0.5)
 
-# else:
-# 	print("Loading model from memory")
-# 	if os.path.isfile(GENERATOR_PATH):
-# 		generator = tf.keras.models.load_model(GENERATOR_PATH)
-# 		print("Generator loaded")
-# 	else:
-# 		assert(os.path.isfile(GENERATOR_PATH), True)
-# 		print("No generator file found")
-# 	if os.path.isfile(DISCRIMINATOR_PATH):
-		
-# 		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
-# 		print("Discriminator loaded")
-# 	else:
-# 		assert(os.path.isfile(GENERATOR_PATH), True)
-# 		print("No discriminator file found")
+	else:
+		print("Loading model from memory")
+		if os.path.isfile(GENERATOR_PATH):
+			generator = tf.keras.models.load_model(GENERATOR_PATH)
+			print("Generator loaded")
+		else:
+			assert(os.path.isfile(GENERATOR_PATH), True)
+			print("No generator file found")
+		if os.path.isfile(DISCRIMINATOR_PATH):
+			
+			discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
+			print("Discriminator loaded")
+		else:
+			assert(os.path.isfile(GENERATOR_PATH), True)
+			print("No discriminator file found")
 		
 
 
@@ -302,8 +326,6 @@ def train(dataset, epochs):
 	for epoch in range(epochs):
 		epoch_start = time.time()
 		dist_dataset = mirrored_strategy.make_dataset_iterator(dataset)
-		# gen_loss_list = []
-		# disc_loss_list = []
 
 		with mirrored_strategy.scope():
 			t = mirrored_strategy.experimental_run(train_step, dist_dataset)
@@ -325,7 +347,6 @@ def train(dataset, epochs):
 		
 		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
 		
-		# save_images(epoch,dataset)
 		
 
 	elapsed = time.time()-start
