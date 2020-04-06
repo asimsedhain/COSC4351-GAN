@@ -85,7 +85,7 @@ def getDataset(path):
 
 
 train_dataset = getDataset(TRAINING_PATH)
-train_dataset = mirrored_strategy.experimental_distribute_dataset(train_dataset)
+train_dataset = mirrored_strategy.make_dataset_iterator(train_dataset)
 
 # Helper method for saving an output file while training.
 # def save_images(cnt,dataset):
@@ -300,21 +300,23 @@ def train(dataset, epochs):
 	for epoch in range(epochs):
 		epoch_start = time.time()
 
-		gen_loss_list = []
-		disc_loss_list = []
+		# gen_loss_list = []
+		# disc_loss_list = []
 
 		with mirrored_strategy.scope():
-			for image_batch in dataset:
-				t = mirrored_strategy.run(train_step, args=(image_batch,))
-				# t = train_step(image_batch)
-				gen_loss_list.append(t[0])
-				disc_loss_list.append(t[1])
+			t = mirrored_strategy.experimental_run(train_step, dataset)
+			# for image_batch in dataset:
+			# 	t = mirrored_strategy.run(train_step, args=(image_batch,))
+			# 	# t = train_step(image_batch)
+			# 	gen_loss_list.append(t[0])
+			# 	disc_loss_list.append(t[1])
 
-		g_loss = sum(gen_loss_list) / len(gen_loss_list)
-		d_loss = sum(disc_loss_list) / len(disc_loss_list)
+		# g_loss = sum(gen_loss_list) / len(gen_loss_list)
+		# d_loss = sum(disc_loss_list) / len(disc_loss_list)
 
 		epoch_elapsed = time.time()-epoch_start
-		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
+		# print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
+		print(f"Log: {t} \t time: {epoch_elapsed}")
 		# save_images(epoch,dataset)
 		# if(epoch%5==0):
 		# 	print(f"Saving Model for epoch {epoch}")
