@@ -20,7 +20,7 @@ tf.compat.v1.enable_eager_execution(
     config=None, device_policy=None, execution_mode=None
 )
 
-
+mirrored_strategy = tf.distribute.MirroredStrategy()
 # configration
 
 
@@ -57,7 +57,7 @@ DATA_PATH = "./"
 # DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_5.h5")
 
 EPOCHS = 50
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 BUFFER_SIZE = 60000
 
 
@@ -85,6 +85,7 @@ def getDataset(path):
 
 
 train_dataset = getDataset(TRAINING_PATH)
+train_dataset = mirrored_strategy.experimental_distribute_dataset(train_dataset)
 
 # Helper method for saving an output file while training.
 # def save_images(cnt,dataset):
@@ -227,10 +228,14 @@ def build_discriminator(image_shape = (GENERATE_SQUARE, GENERATE_SQUARE, 2)):
 # Checks if you want to continue training model from disk or start a new
 
 if(INITIAL_TRAINING):
-	print("Initializing Generator and Discriminator")
-	generator = build_generator()
-	discriminator = build_discriminator()
-	print("Generator and Discriminator initialized")
+	with mirrored_strategy.scope():
+		print("Initializing Generator and Discriminator")
+		generator = build_generator()
+		discriminator = build_discriminator()
+		print("Generator and Discriminator initialized")
+		generator_optimizer = Adam(2e-4,0.5)
+		discriminator_optimizer = Adam(2e-4,0.5)
+
 # else:
 # 	print("Loading model from memory")
 # 	if os.path.isfile(GENERATOR_PATH):
@@ -265,10 +270,9 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output, real_images, gen_images ):
 	return cross_entropy(tf.ones_like(fake_output), fake_output) + 100*mean_absolute(real_images, gen_images)
 
-generator_optimizer = Adam(2e-4,0.5)
-discriminator_optimizer = Adam(2e-4,0.5)
 
 
+@tf.function
 def train_step(images):
   
 	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
@@ -299,10 +303,12 @@ def train(dataset, epochs):
 		gen_loss_list = []
 		disc_loss_list = []
 
-		for image_batch in dataset:
-			t = train_step(image_batch)
-			gen_loss_list.append(t[0])
-			disc_loss_list.append(t[1])
+		with mirrored_strategy.scope():
+			for image_batch in dataset:
+				t = mirrored_strategy.run(train_step, args=(image_batch,))
+				# t = train_step(image_batch)
+				gen_loss_list.append(t[0])
+				disc_loss_list.append(t[1])
 
 		g_loss = sum(gen_loss_list) / len(gen_loss_list)
 		d_loss = sum(disc_loss_list) / len(disc_loss_list)
