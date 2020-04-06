@@ -10,7 +10,8 @@ from tensorflow.keras.models import Sequential, Model, load_model
 # from tensorflow.keras.optimizers import Adam
 from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
-
+import matplotlib
+matplotlib.use("Agg")
 import os 
 import time
 import matplotlib.pyplot as plt
@@ -45,12 +46,12 @@ PREVIEW_MARGIN = 16
 
 
 # Configuration
-TRAINING_PATH = "../test"
+TRAINING_PATH = "../val_set"
+DATA_PATH = "./"
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
 
 
-DATA_PATH = "./"
 
 
 
@@ -91,8 +92,8 @@ train_dataset = getDataset(TRAINING_PATH)
 # Helper method for saving an output file while training.
 def save_images(cnt,dataset):
 
-    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
-    sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
+    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
+    sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
 
     generated_images = generator.predict(sample_images_input)
     generated_images = tf.concat([sample_images_input, generated_images], 3) 
@@ -103,13 +104,13 @@ def save_images(cnt,dataset):
     
 
     fig = plt.figure(figsize=(20, 10))
-    plt.tight_layout()
+
     for i in range(16):
         plt.subplot(4,8,(2*i) +1)
         plt.xticks([])
         plt.yticks([])
         plt.title("Ground Truth")
-        plt.imshow(sample_images[i])
+        plt.imshow(sample_images[0, i])
         plt.subplot(4,8,(2*i) + 2)
         plt.xticks([])
         plt.yticks([])
@@ -117,7 +118,7 @@ def save_images(cnt,dataset):
         plt.imshow(generated_images[i])
     fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
     plt.close(fig)
-
+    print(f"Saved Image: {test_cnt.png}")
 
 
 # generator code
