@@ -1,6 +1,7 @@
 
 # Importing libraries
-# problem in import
+
+
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, BatchNormalization, Activation, ZeroPadding2D, Concatenate, Add
 from tensorflow.keras.layers import LeakyReLU
@@ -12,7 +13,7 @@ import numpy as np
 
 import os 
 import time
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import re
 import pathlib
 
@@ -42,11 +43,12 @@ PREVIEW_ROWS = 4
 PREVIEW_COLS = 7
 PREVIEW_MARGIN = 16
 
-# Size vector to generate images from
-SEED_SIZE = 100
 
 # Configuration
-TRAINING_PATH = "../val_set"
+TRAINING_PATH = "../test"
+
+MODEL_PATH = os.path.join(DATA_PATH,"Models")
+
 
 DATA_PATH = "./"
 
@@ -87,34 +89,34 @@ train_dataset = getDataset(TRAINING_PATH)
 
 
 # Helper method for saving an output file while training.
-# def save_images(cnt,dataset):
+def save_images(cnt,dataset):
 
-#     sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
-#     sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
+    sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(16)])
+    sample_images_input = tf.reshape(sample_images[:, :, :, 0],(16, 128, 128, 1))
 
-#     generated_images = generator.predict(sample_images_input)
-#     generated_images = tf.concat([sample_images_input, generated_images], 3) 
-#     generated_images = tf.image.yuv_to_rgb(generated_images)
-#     generated_images = generated_images.numpy()
-#     sample_images = tf.image.yuv_to_rgb(sample_images)
-#     sample_images = sample_images.numpy()
+    generated_images = generator.predict(sample_images_input)
+    generated_images = tf.concat([sample_images_input, generated_images], 3) 
+    generated_images = tf.image.yuv_to_rgb(generated_images)
+    generated_images = generated_images.numpy()
+    sample_images = tf.image.yuv_to_rgb(sample_images)
+    sample_images = sample_images.numpy()
     
 
-#     fig = plt.figure(figsize=(20, 10))
-#     plt.tight_layout()
-#     for i in range(16):
-#         plt.subplot(4,8,(2*i) +1)
-#         plt.xticks([])
-#         plt.yticks([])
-#         plt.title("Ground Truth")
-#         plt.imshow(sample_images[i])
-#         plt.subplot(4,8,(2*i) + 2)
-#         plt.xticks([])
-#         plt.yticks([])
-#         plt.title("Model Generated")
-#         plt.imshow(generated_images[i])
-#     fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
-#     plt.close(fig)
+    fig = plt.figure(figsize=(20, 10))
+    plt.tight_layout()
+    for i in range(16):
+        plt.subplot(4,8,(2*i) +1)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title("Ground Truth")
+        plt.imshow(sample_images[i])
+        plt.subplot(4,8,(2*i) + 2)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title("Model Generated")
+        plt.imshow(generated_images[i])
+    fig.savefig(os.path.join(DATA_PATH,f'output/test_{cnt}.png'), dpi =fig.dpi)
+    plt.close(fig)
 
 
 
@@ -311,6 +313,11 @@ def train(dataset, epochs):
 			# 	disc_loss_list.append(t[1])
 			g_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[0])
 			d_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[1])
+			save_images(epoch, train_dataset)
+			if(epoch%5==0):
+				print(f"Saving Model for epoch {epoch}")
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 
 		epoch_elapsed = time.time()-epoch_start
@@ -318,10 +325,7 @@ def train(dataset, epochs):
 		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
 		
 		# save_images(epoch,dataset)
-		# if(epoch%5==0):
-		# 	print(f"Saving Model for epoch {epoch}")
-		# 	generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-		# 	discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+		
 
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
@@ -334,7 +338,6 @@ train(train_dataset, 100)
 
 # saving the model to disk
 
-MODEL_PATH = os.path.join(DATA_PATH,"Models")
 with mirrored_strategy.scope():
 	generator.save(os.path.join(MODEL_PATH,"color_generator_main.h5"))
 	discriminator.save(os.path.join(MODEL_PATH,"color_discriminator_main.h5"))
