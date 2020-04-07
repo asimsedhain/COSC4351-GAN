@@ -11,6 +11,7 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
 import matplotlib
+import cv2 as cv
 matplotlib.use("Agg")
 import os 
 import time
@@ -46,7 +47,7 @@ PREVIEW_MARGIN = 16
 
 
 # Configuration
-TRAINING_PATH = "../test"
+TRAINING_PATH = "../training_data_lab_128_128.npy"
 DATA_PATH = "./"
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
@@ -61,7 +62,7 @@ DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_main.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 32
-BUFFER_SIZE = 20000
+BUFFER_SIZE = 60000
 
 print(f"Will generate {GENERATE_SQUARE}px square images.")
 
@@ -69,65 +70,56 @@ print(f"Will generate {GENERATE_SQUARE}px square images.")
 
 
 
-def getDataset(path):
-	train_path = pathlib.Path(path)
-	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
-	def parse_image(filename):
-		image = tf.io.read_file(filename)
-		image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
-		image = tf.image.convert_image_dtype(image, tf.float32)
+# def getDataset(path):
+# 	train_path = pathlib.Path(path)
+# 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
+# 	def parse_image(filename):
+# 		image = tf.io.read_file(filename)
+# 		image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
+# 		image = tf.image.convert_image_dtype(image, tf.float32)
+# 		image = tf.image.rgb_to_yuv(image)
+# 		image = tf.image.resize(image, [128, 128])
+# 		last_dimension_axis = len(image.shape) - 1
+# 		y, u, v = tf.split(image, 3, axis=last_dimension_axis)
+# 		y = tf.subtract(y, 0.5)
+# 		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
+# 		return preprocessed_yuv_images
+# 	img_ds = list_ds.map(parse_image)
+# 	return img_ds.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
-	
-		
-		image = tf.image.rgb_to_yuv(image)
-		image = tf.image.resize(image, [128, 128])
-		last_dimension_axis = len(image.shape) - 1
-		y, u, v = tf.split(image, 3, axis=last_dimension_axis)
-		y = tf.subtract(y, 0.5)
-		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
-		return preprocessed_yuv_images
-	img_ds = list_ds.map(parse_image)
-	return img_ds.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+
+def getDataset(path):
+	if not os.path.isfile(TRAINING_PATH):
+		print("No pickle found... Please run with the correct file")
+		return None
+	else:
+		print("Loading previous training pickle...")
+		training_data = np.load(TRAINING_PATH)
+		training_data = training_data.astype(np.float32)
+		training_data = ((training_data/127.5)-1)
+		return tf.data.Dataset.from_tensor_slices(training_data).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
 
 train_dataset = getDataset(TRAINING_PATH)
 
-def preprocess_yuv(yuv_images):
-	last_dimension_axis = len(yuv_images.shape) - 1
-	yuv_tensor_images = tf.truediv(
-	tf.subtract(
-		yuv_images,
-		tf.reduce_min(yuv_images)
-	),
-	tf.subtract(
-		tf.reduce_max(yuv_images),
-		tf.reduce_min(yuv_images)
-		)
-	)
-	y, u, v = tf.split(yuv_tensor_images, 3, axis=last_dimension_axis)
-	target_uv_min, target_uv_max = -0.5, 0.5
-	u = u * (target_uv_max - target_uv_min) + target_uv_min
-	v = v * (target_uv_max - target_uv_min) + target_uv_min
-	preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
-	rgb_tensor_images = tf.image.yuv_to_rgb(preprocessed_yuv_images)
-	return rgb_tensor_images
+
 
 # Helper method for saving an output file while training.
 def save_images(cnt,dataset):
 	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
-	#sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
 	last_dimension_axis = len(sample_images.shape) - 1
 	y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
 	generated_images = generator.predict(y[0])
-	y = tf.add(y, 0.5)
-	#sample_images_input = tf.add(sample_images_input, 0.5)
+	
 	
 	generated_images = tf.concat([y[0], generated_images],3) 
-
-	generated_images = tf.image.yuv_to_rgb(generated_images)
+	sample_images = tf.multiply(tf.add(sample_images, 1), 127.5)
 	generated_images = generated_images.numpy()
-	sample_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
 	sample_images = sample_images.numpy()
+	generated_images = [cv.cvtColor(i, cv.COLOR_LAB2RGB) for i in generated_images.astype(np.uint8)]
+	sample_images = [cv.cvtColor(i, cv.COLOR_LAB2RGB) for i in sample_images[0].astype(np.uint8)]
+	
+
     
 
 	fig = plt.figure(figsize=(20, 10))
@@ -137,7 +129,7 @@ def save_images(cnt,dataset):
 		plt.xticks([])
 		plt.yticks([])
 		plt.title("Ground Truth")
-		plt.imshow(sample_images[0, i])
+		plt.imshow(sample_images[i])
 		plt.subplot(4,8,(2*i) + 2)
 		plt.xticks([])
 		plt.yticks([])
