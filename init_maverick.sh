@@ -29,11 +29,11 @@ CPLUS_INCLUDE_PATH=/opt/apps/intel18/impi18_0/boost/1.66/include \
                 --user horovod==0.16.4 --no-cache-dir
 echo "env varibales Loaded"
 
-pip3 install matplotlib==2.0.0
+pip3 install matplotlib==2.0.0 --user
 
 echo "safe matplotlib version loaded"
 
-pip3 install opencv-python
+pip3 install opencv-python --user
 
 echo "opencv Loaded"
 

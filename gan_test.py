@@ -7,7 +7,6 @@ from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, Bat
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.layers import UpSampling2D, Conv2D
 from tensorflow.keras.models import Sequential, Model, load_model
-# from tensorflow.keras.optimizers import Adam
 from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
 import matplotlib
@@ -16,8 +15,13 @@ matplotlib.use("Agg")
 import os 
 import time
 import matplotlib.pyplot as plt
-import re
-import pathlib
+from model import build_discriminator
+from model import build_generator
+from model import discriminator_loss
+from model import generator_loss
+
+
+
 
 tf.compat.v1.enable_eager_execution(
     config=None, device_policy=None, execution_mode=None
@@ -40,10 +44,7 @@ GENERATE_RES = 4 # Generation resolution factor (1=32, 2=64, 3=96, 4=128, etc.)
 GENERATE_SQUARE = 32 * GENERATE_RES # rows/cols (should be square)
 IMAGE_CHANNELS = 3
 
-# Preview image 
-PREVIEW_ROWS = 4
-PREVIEW_COLS = 7
-PREVIEW_MARGIN = 16
+
 
 
 # Configuration
@@ -141,110 +142,9 @@ def save_images(cnt,dataset):
 	print(f"Saved Image: test_{cnt}.png")
 
 
-# generator code
-
-def build_generator(channels=2, image_shape = (GENERATE_SQUARE, GENERATE_SQUARE, 1)):
-
-	input_layer = Input(shape=image_shape)
-	x = Conv2D(64, kernel_size=3,activation="relu", padding="same")(input_layer)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-
-	x = Conv2D(64,kernel_size=3, strides=1,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x_128_128 = Activation("relu")(x)
-
-	x = Conv2D(128,kernel_size=3, strides=2,padding="same")(x_128_128)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-	x = Conv2D(128,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x_64_64 = Activation("relu")(x)
-
-	x = Conv2D(256,kernel_size=3, strides=2,padding="same")(x_64_64)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-	x = Conv2D(256,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-	x = Conv2D(256,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
 
 
 
-	# Output resolution, additional upsampling
-	x = UpSampling2D(size=(2, 2))(x)
-	x = Conv2D(128,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Concatenate()([x, x_64_64])
-	x = Activation("relu")(x)
-
-	x = Conv2D(128,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-
-	x = UpSampling2D(size=(2,2))(x)
-	x = Conv2D(64,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Concatenate()([x, x_128_128])
-	x = Activation("relu")(x)
-
-	x = Conv2D(64,kernel_size=3,padding="same")(x)
-	x = BatchNormalization(momentum=0.8)(x)
-	x = Activation("relu")(x)
-
-	# Final CNN layer
-	x = Conv2D(2,kernel_size=3,padding="same")(x)
-	output_layer = Activation("tanh")(x)
-
-	return tf.keras.Model(inputs = input_layer, outputs=output_layer, name = "Generator")
-
-# discrimator code
-
-def build_discriminator(image_shape = (GENERATE_SQUARE, GENERATE_SQUARE, 2)):
-	model = Sequential()
-
-	model.add(Conv2D(32, kernel_size=3, strides=2, input_shape=image_shape, padding="same"))
-	model.add(LeakyReLU(alpha=0.2))
-
-	model.add(Dropout(0.25))
-	model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
-	model.add(ZeroPadding2D(padding=((0,1),(0,1))))
-	model.add(BatchNormalization(momentum=0.8))
-	model.add(LeakyReLU(alpha=0.2))
-
-	model.add(Dropout(0.25))
-	model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
-	model.add(ZeroPadding2D(padding=((0,1),(0,1))))
-	model.add(BatchNormalization(momentum=0.8))
-	model.add(LeakyReLU(alpha=0.2))
-
-	model.add(Dropout(0.25))
-	model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
-	model.add(BatchNormalization(momentum=0.8))
-	model.add(LeakyReLU(alpha=0.2))
-
-	# model.add(Dropout(0.25))
-	# model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-	# model.add(BatchNormalization(momentum=0.8))
-	# model.add(LeakyReLU(alpha=0.2))
-
-	model.add(Dropout(0.25))
-	model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-	model.add(BatchNormalization(momentum=0.8))
-	model.add(LeakyReLU(alpha=0.2))
-
-	model.add(Dropout(0.25))
-	model.add(Flatten())
-	model.add(Dense(1, activation='sigmoid'))
-
-	return model
 
 
 # Checks if you want to continue training model from disk or start a new
@@ -278,18 +178,7 @@ with mirrored_strategy.scope():
 
 
 
-# This method returns a helper function to compute cross entropy loss
-cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-mean_absolute = tf.keras.losses.MeanAbsoluteError()
 
-def discriminator_loss(real_output, fake_output):
-	real_loss = cross_entropy(tf.ones_like(real_output), real_output)
-	fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
-	total_loss = real_loss + fake_loss
-	return total_loss
-
-def generator_loss(fake_output, real_images, gen_images ):
-	return cross_entropy(tf.ones_like(fake_output), fake_output) + 100*mean_absolute(real_images, gen_images)
 
 
 
@@ -324,11 +213,6 @@ def train(dataset, epochs):
 
 		with mirrored_strategy.scope():
 			t = mirrored_strategy.experimental_run(train_step, dist_dataset)
-			# for image_batch in dataset:
-			# 	t = mirrored_strategy.run(train_step, args=(image_batch,))
-			# 	# t = train_step(image_batch)
-			# 	gen_loss_list.append(t[0])
-			# 	disc_loss_list.append(t[1])
 			g_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[0])
 			d_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[1])
 			save_images(epoch, train_dataset)
