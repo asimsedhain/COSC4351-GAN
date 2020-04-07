@@ -46,7 +46,7 @@ PREVIEW_MARGIN = 16
 
 
 # Configuration
-TRAINING_PATH = "../val_set"
+TRAINING_PATH = "../test"
 DATA_PATH = "./"
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
