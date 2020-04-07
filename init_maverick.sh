@@ -1,3 +1,5 @@
+echo "Setting env for Maverick2"
+
 module load intel/17.0.4 python3/3.6.3
 
 echo "Python Loaded"
@@ -25,6 +27,14 @@ CPLUS_INCLUDE_PATH=/opt/apps/intel18/impi18_0/boost/1.66/include \
                 HOROVOD_NCCL_HOME=/opt/apps/cuda10_0/nccl/2.4.7 HOROVOD_WITH_TENSORFLOW=1 \
                 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 pip3 install \
                 --user horovod==0.16.4 --no-cache-dir
+echo "env varibales Loaded"
 
+pip3 install matplotlib==2.0.0
+
+echo "safe matplotlib version loaded"
+
+pip3 install opencv-python
+
+echo "opencv Loaded"
 
 echo "Complete"
