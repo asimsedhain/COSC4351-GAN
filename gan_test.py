@@ -113,6 +113,7 @@ def save_images(cnt,dataset):
 	
 	
 	generated_images = tf.concat([y[0], generated_images],3) 
+	generated_images = tf.multiply(tf.add(generated_images, 1), 127.5)
 	sample_images = tf.multiply(tf.add(sample_images, 1), 127.5)
 	generated_images = generated_images.numpy()
 	sample_images = sample_images.numpy()
