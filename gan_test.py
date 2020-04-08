@@ -210,9 +210,8 @@ def train_step(images):
 	disc_loss = tf.nn.compute_average_loss(disc_loss, global_batch_size=GLOBAL_BATCH_SIZE)
 	return gen_loss,disc_loss
 
-def dist_train_step(dist_dataset):
-	with mirrored_strategy.scope():
-			losses = mirrored_strategy.experimental_run(train_step, dist_dataset)
+def dist_train_step(images):
+	losses = train_step(images)	
 	return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0],axis=None), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1],axis=None)
 
 
@@ -226,12 +225,15 @@ def train(dataset, epochs):
 		with mirrored_strategy.scope():
 			total_losses = [0.0, 0.0]
 			num_batches = 0
-				
-			losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
-			total_losses[0] += losses[0]
-			print(1)
-			total_losses[1] += losses[1]
-			num_batches+=1
+			try:
+				while True:
+					losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
+					total_losses[0] += losses[0]
+					print(1)
+					total_losses[1] += losses[1]
+					num_batches+=1
+			except Exception as err:
+				print(err)
 					
 			
 			save_images(epoch, train_dataset)
