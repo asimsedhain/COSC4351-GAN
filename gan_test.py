@@ -19,7 +19,7 @@ from model import build_discriminator
 from model import build_generator
 from model import discriminator_loss
 from model import generator_loss
-
+import sys
 
 
 
@@ -218,14 +218,22 @@ def train(dataset, epochs):
 	
 	for epoch in range(epochs):
 		epoch_start = time.time()
-		#dist_dataset.initialize()
-		
+		dist_dataset.initialize()
+		gen_loss, disc_loss = 0.0, 0.0
+		num_batches = 0
 		with mirrored_strategy.scope():	
-			losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)		
-			losses = mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0]), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1])
-			if(epoch%300==0):
-				save_images(epoch, train_dataset)
-			if(epoch%500==0):
+			try:
+				while True:
+					losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)		
+					losses = mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0]), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1])
+					gen_loss +=losses[0]
+					disc_loss+=losses[1]
+					num_batches+=1
+			except:
+				pass
+		
+			save_images(epoch, train_dataset)
+			if(epoch%5==0):
 				print(f"Saving Model for epoch {epoch}")
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
@@ -233,7 +241,7 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		
-		print(f'Epoch {epoch+1}, gen loss={losses[0]},disc loss={losses[1]}, Epoch Time:{(epoch_elapsed)}')
+		tf.print(f'Epoch {epoch+1}, gen loss={gen_loss/num_batches},disc loss={disc_loss/num_batches}, Epoch Time:{(epoch_elapsed)}, Num of Batches: {num_batches}', output_stream=sys.stderr)
 
 		
 		
@@ -241,7 +249,7 @@ def train(dataset, epochs):
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
 
-train(train_dataset, 15000)
+train(train_dataset, 100)
 
 
 
