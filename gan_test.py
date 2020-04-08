@@ -45,6 +45,9 @@ GENERATE_SQUARE = 32 * GENERATE_RES # rows/cols (should be square)
 IMAGE_CHANNELS = 3
 
 
+BATCH_SIZE_PER_REPLICA = 32
+GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * mirrored_strategy.num_replicas_in_sync
+
 
 
 # Configuration
@@ -98,10 +101,11 @@ def getDataset(path):
 		training_data = np.load(TRAINING_PATH)
 		training_data = training_data.astype(np.float32)
 		training_data = ((training_data/127.5)-1)
-		return tf.data.Dataset.from_tensor_slices(training_data).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+		return tf.data.Dataset.from_tensor_slices(training_data).shuffle(BUFFER_SIZE).batch(GLOBAL_BATCH_SIZE)
 
 
 train_dataset = getDataset(TRAINING_PATH)
+dist_dataset = mirrored_strategy.make_dataset_iterator(dataset)
 
 
 
@@ -193,28 +197,43 @@ def train_step(images):
 		real_output = discriminator(real, training=True)
 		fake_output = discriminator(generated_images, training=True)
 
-		gen_loss = generator_loss(fake_output, real, generated_images)
-		disc_loss = discriminator_loss(real_output, fake_output)
+	gen_loss = generator_loss(fake_output, real, generated_images)
+	disc_loss = discriminator_loss(real_output, fake_output)
 
 
-		gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-		gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+	gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+	gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
-		generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-		discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+	generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+	discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+	gen_loss = tf.nn.compute_average_loss(gen_loss, global_batch_size=GLOBAL_BATCH_SIZE)
+	disc_loss = tf.nn.compute_average_loss(disc_loss, global_batch_size=GLOBAL_BATCH_SIZE)
 	return gen_loss,disc_loss
+
+def dist_train_step(dist_dataset):
+	losses = mirrored_strategy.experimental_run(train_step, dist_dataset)
+	return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0],axis=None), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1],axis=None)
+
 
 def train(dataset, epochs):
 	start = time.time()
 	
 	for epoch in range(epochs):
 		epoch_start = time.time()
-		dist_dataset = mirrored_strategy.make_dataset_iterator(dataset)
+		dist_dataset.initialize()
 
 		with mirrored_strategy.scope():
-			t = mirrored_strategy.experimental_run(train_step, dist_dataset)
-			g_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[0])
-			d_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, t[1])
+			total_losses = (0.0, 0.0)
+			num_batches = 0
+			while True:
+				try:
+					losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
+					total_losses[0] += losses[0]
+					total_losses[1] += losses[1]
+					num_batches+=1
+				except:
+					pass
+
 			save_images(epoch, train_dataset)
 			if(epoch%5==0):
 				print(f"Saving Model for epoch {epoch}")
@@ -224,7 +243,7 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		
-		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
+		print (f'Epoch {epoch+1}, gen loss={total_losses[0]},disc loss={total_losses[1]}, {(epoch_elapsed)}')
 		
 		
 
