@@ -105,7 +105,7 @@ def getDataset(path):
 
 
 train_dataset = getDataset(TRAINING_PATH)
-dist_dataset = mirrored_strategy.make_dataset_iterator(dataset)
+dist_dataset = mirrored_strategy.make_dataset_iterator(train_dataset)
 
 
 
@@ -221,19 +221,18 @@ def train(dataset, epochs):
 	for epoch in range(epochs):
 		epoch_start = time.time()
 		dist_dataset.initialize()
-
+		print(f"Starting epoch {epoch+1}")
 		with mirrored_strategy.scope():
-			total_losses = (0.0, 0.0)
+			total_losses = [0.0, 0.0]
 			num_batches = 0
-			while True:
-				try:
-					losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
-					total_losses[0] += losses[0]
-					total_losses[1] += losses[1]
-					num_batches+=1
-				except:
-					pass
-
+				
+			losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
+			total_losses[0] += losses[0]
+			print(1)
+			total_losses[1] += losses[1]
+			num_batches+=1
+					
+			
 			save_images(epoch, train_dataset)
 			if(epoch%5==0):
 				print(f"Saving Model for epoch {epoch}")
@@ -243,7 +242,7 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		
-		print (f'Epoch {epoch+1}, gen loss={total_losses[0]},disc loss={total_losses[1]}, {(epoch_elapsed)}')
+		print (f'Epoch {epoch+1}, gen loss={total_losses[0]},disc loss={total_losses[1]}, Epoch Time:{(epoch_elapsed)}, Number of Batches: {num_batches}')
 		
 		
 
