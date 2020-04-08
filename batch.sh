@@ -8,7 +8,7 @@
 #SBATCH -p gtx
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -t 05:00:00
+#SBATCH -t 09:00:00
 #SBATCH --mail-user=asedhain@patriots.uttyler.edu
 #SBATCH --mail-type=all
 #SBATCH -A COSC4381Spring2020

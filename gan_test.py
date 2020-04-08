@@ -219,16 +219,16 @@ def train(dataset, epochs):
 	for epoch in range(epochs):
 		epoch_start = time.time()
 		#dist_dataset.initialize()
-		print(f"Starting epoch {epoch+1}")
+		
 		with mirrored_strategy.scope():	
 			losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)		
 			losses = mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0]), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1])
-			#if(epoch%25==0):
-			#	save_images(epoch, train_dataset)
-			#if(epoch%50==0):
-			#	print(f"Saving Model for epoch {epoch}")
-		#		generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-		#		discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			if(epoch%300==0):
+				save_images(epoch, train_dataset)
+			if(epoch%500==0):
+				print(f"Saving Model for epoch {epoch}")
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 
 		epoch_elapsed = time.time()-epoch_start
@@ -241,7 +241,7 @@ def train(dataset, epochs):
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
 
-train(train_dataset, 5000)
+train(train_dataset, 15000)
 
 
 
