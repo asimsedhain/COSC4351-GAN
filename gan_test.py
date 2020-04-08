@@ -186,33 +186,34 @@ with mirrored_strategy.scope():
 
 
 
-with mirrored_strategy.scope():
-	def train_step(images):
-	
-		seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
-		real = images[:,:, :, 1:3]
 
-		with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-			generated_images = generator(seed, training=True)
-			real_output = discriminator(real, training=True)
-			fake_output = discriminator(generated_images, training=True)
+def train_step(images):
 
-		gen_loss = generator_loss(fake_output, real, generated_images)
-		disc_loss = discriminator_loss(real_output, fake_output)
+	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
+	real = images[:,:, :, 1:3]
+
+	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+		generated_images = generator(seed, training=True)
+		real_output = discriminator(real, training=True)
+		fake_output = discriminator(generated_images, training=True)
+
+	gen_loss = generator_loss(fake_output, real, generated_images)
+	disc_loss = discriminator_loss(real_output, fake_output)
 
 
-		gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-		gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+	gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+	gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
-		generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-		discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
-		gen_loss = tf.nn.compute_average_loss(gen_loss, global_batch_size=GLOBAL_BATCH_SIZE)
-		disc_loss = tf.nn.compute_average_loss(disc_loss, global_batch_size=GLOBAL_BATCH_SIZE)
-		return gen_loss,disc_loss
+	generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+	discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+	gen_loss = tf.nn.compute_average_loss(gen_loss, global_batch_size=GLOBAL_BATCH_SIZE)
+	disc_loss = tf.nn.compute_average_loss(disc_loss, global_batch_size=GLOBAL_BATCH_SIZE)
+	return gen_loss,disc_loss
 
-	def dist_train_step(dist_dataset):
-		losses = mirrored_strategy.experimental_run(train_step, dist_dataset)
-		return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0],axis=None), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1],axis=None)
+def dist_train_step(dist_dataset):
+	with mirrored_strategy.scope():
+			losses = mirrored_strategy.experimental_run(train_step, dist_dataset)
+	return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0],axis=None), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1],axis=None)
 
 
 def train(dataset, epochs):
