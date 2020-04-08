@@ -186,73 +186,62 @@ with mirrored_strategy.scope():
 
 
 
+with mirrored_strategy.scope():
+	def train_step(images):
+		seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
+		real = images[:,:, :, 1:3]
 
-def train_step(images):
+		with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+			generated_images = generator(seed, training=True)
+			real_output = discriminator(real, training=True)
+			fake_output = discriminator(generated_images, training=True)
 
-	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
-	real = images[:,:, :, 1:3]
-
-	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-		generated_images = generator(seed, training=True)
-		real_output = discriminator(real, training=True)
-		fake_output = discriminator(generated_images, training=True)
-
-	gen_loss = generator_loss(fake_output, real, generated_images)
-	disc_loss = discriminator_loss(real_output, fake_output)
+			gen_loss = generator_loss(fake_output, real, generated_images)
+			disc_loss = discriminator_loss(real_output, fake_output)
 
 
-	gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-	gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+			gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+			gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
-	generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-	discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
-	gen_loss = tf.nn.compute_average_loss(gen_loss, global_batch_size=GLOBAL_BATCH_SIZE)
-	disc_loss = tf.nn.compute_average_loss(disc_loss, global_batch_size=GLOBAL_BATCH_SIZE)
-	return gen_loss,disc_loss
+			generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+			discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+		gen_loss = tf.reduce_sum(gen_loss)*(1./GLOBAL_BATCH_SIZE)
+		disc_loss = tf.reduce_sum(disc_loss)*(1./GLOBAL_BATCH_SIZE)
+		return gen_loss,disc_loss
 
-def dist_train_step(images):
-	losses = train_step(images)	
-	return mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0],axis=None), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1],axis=None)
-
+	def dist_train_step(images):
+		return train_step(images)	
+	
 
 def train(dataset, epochs):
 	start = time.time()
 	
 	for epoch in range(epochs):
 		epoch_start = time.time()
-		dist_dataset.initialize()
+		#dist_dataset.initialize()
 		print(f"Starting epoch {epoch+1}")
-		with mirrored_strategy.scope():
-			total_losses = [0.0, 0.0]
-			num_batches = 0
-			try:
-				while True:
-					losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)
-					total_losses[0] += losses[0]
-					print(1)
-					total_losses[1] += losses[1]
-					num_batches+=1
-			except Exception as err:
-				print(err)
-					
-			
-			save_images(epoch, train_dataset)
-			if(epoch%5==0):
-				print(f"Saving Model for epoch {epoch}")
-				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+		with mirrored_strategy.scope():	
+			losses = mirrored_strategy.experimental_run(dist_train_step, dist_dataset)		
+			losses = mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[0]), mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, losses[1])
+			#if(epoch%25==0):
+			#	save_images(epoch, train_dataset)
+			#if(epoch%50==0):
+			#	print(f"Saving Model for epoch {epoch}")
+		#		generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+		#		discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 
 		epoch_elapsed = time.time()-epoch_start
 		
-		print (f'Epoch {epoch+1}, gen loss={total_losses[0]},disc loss={total_losses[1]}, Epoch Time:{(epoch_elapsed)}, Number of Batches: {num_batches}')
+		print(f'Epoch {epoch+1}, gen loss={losses[0]},disc loss={losses[1]}, Epoch Time:{(epoch_elapsed)}')
+
 		
 		
 
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
 
-train(train_dataset, 400)
+train(train_dataset, 5000)
 
 
 
