@@ -231,7 +231,7 @@ def train(dataset, epochs):
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
 
-train(train_dataset, 100)
+train(train_dataset, 400)
 
 
 

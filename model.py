@@ -8,7 +8,9 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.train import AdamOptimizer as Adam
 
 
-
+GENERATE_RES = 4 # Generation resolution factor (1=32, 2=64, 3=96, 4=128, etc.)
+GENERATE_SQUARE = 32 * GENERATE_RES # rows/cols (should be square)
+IMAGE_CHANNELS = 3
 
 # generator code
 

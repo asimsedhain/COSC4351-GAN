@@ -29,7 +29,7 @@ EPOCHS = 50
 BATCH_SIZE = 32
 BUFFER_SIZE = 60000
 
-print(f"Will generate {GENERATE_SQUARE}px square images.")
+
 
 
 def getDataset(path):
