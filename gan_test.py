@@ -83,10 +83,10 @@ def save_images(cnt,dataset):
        sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
        last_dimension_axis = len(sample_images.shape) - 1
        y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
-       generated_images = generator.predict(y[0])
+       generated_images = generator.predict(y[0].numpy())
        
        
-       generated_images = tf.concat([y[0], generated_images],3) 
+      
        
        
        generated_images = tf.concat([y[0], generated_images],3) 
@@ -312,7 +312,7 @@ def train(dataset, epochs):
 
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
-
+save_images(100, train_dataset)
 train(train_dataset, 100)
 
 
