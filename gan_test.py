@@ -20,7 +20,7 @@ from model import build_generator
 from model import discriminator_loss
 from model import generator_loss
 import sys
-
+import traceback
 
 
 tf.compat.v1.enable_eager_execution(
@@ -32,8 +32,8 @@ mirrored_strategy = tf.distribute.MirroredStrategy()
 
 
 """Change the INITIAL_TRAINING variable to decide if model is to be loaded from memory or trained again."""
-INITIAL_TRAINING = True
-
+INITIAL_TRAINING = False
+Checkpoint = 85
 
 
 # Generation resolution - Must be square 
@@ -52,7 +52,7 @@ GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * mirrored_strategy.num_replicas_in_s
 
 # Configuration
 TRAINING_PATH = "../training_data_lab_128_128.npy"
-DATA_PATH = "./"
+DATA_PATH = "./testing"
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
 
@@ -61,8 +61,8 @@ MODEL_PATH = os.path.join(DATA_PATH,"Models")
 
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
-GENERATOR_PATH = os.path.join(MODEL_PATH,"color_generator_main.h5")
-DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_main.h5")
+GENERATOR_PATH = os.path.join(MODEL_PATH,f"color_generator_{checkpoint}.h5")
+DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_{checkpoint}.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 32
@@ -163,7 +163,7 @@ with mirrored_strategy.scope():
 
 	else:
 		print("Loading model from memory")
-		if os.path.isfile(GENERATOR_PATH):
+		if os.path.isfile(GENERATOR_PATH :
 			generator = tf.keras.models.load_model(GENERATOR_PATH)
 			print("Generator loaded")
 		else:
@@ -229,19 +229,20 @@ def train(dataset, epochs):
 					gen_loss +=losses[0]
 					disc_loss+=losses[1]
 					num_batches+=1
-			except:
+			except Exception as err:
+				print(traceback.format_exc())
 				pass
 		
-			save_images(epoch, train_dataset)
+			save_images(epoch+checkpoint, train_dataset)
 			if(epoch%5==0):
 				print(f"Saving Model for epoch {epoch}")
-				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch+checkpoint}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch+checkpoint}.h5"))
 
 
 		epoch_elapsed = time.time()-epoch_start
 		
-		tf.print(f'Epoch {epoch+1}, gen loss={gen_loss/num_batches},disc loss={disc_loss/num_batches}, Epoch Time:{(epoch_elapsed)}, Num of Batches: {num_batches}', output_stream=sys.stderr)
+		tf.print(f'Epoch {epoch+1+checkpoint}, gen loss={gen_loss/num_batches},disc loss={disc_loss/num_batches}, Epoch Time:{(epoch_elapsed)}, Num of Batches: {num_batches}', output_stream=sys.stderr)
 
 		
 		

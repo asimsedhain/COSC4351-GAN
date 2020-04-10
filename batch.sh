@@ -5,10 +5,10 @@
 #SBATCH -J gan_training
 #SBATCH -o output_o.o%j
 #SBATCH -e output_e.e%j
-#SBATCH -p gtx
+#SBATCH -p p100
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -t 09:00:00
+#SBATCH -t 20:00:00
 #SBATCH --mail-user=asedhain@patriots.uttyler.edu
 #SBATCH --mail-type=all
 #SBATCH -A COSC4381Spring2020
