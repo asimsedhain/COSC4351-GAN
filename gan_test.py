@@ -163,7 +163,7 @@ with mirrored_strategy.scope():
 
 	else:
 		print("Loading model from memory")
-		if os.path.isfile(GENERATOR_PATH :
+		if os.path.isfile(GENERATOR_PATH) :
 			generator = tf.keras.models.load_model(GENERATOR_PATH)
 			print("Generator loaded")
 		else:
