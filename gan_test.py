@@ -33,7 +33,7 @@ mirrored_strategy = tf.distribute.MirroredStrategy()
 
 """Change the INITIAL_TRAINING variable to decide if model is to be loaded from memory or trained again."""
 INITIAL_TRAINING = False
-Checkpoint = 85
+checkpoint = 85
 
 
 # Generation resolution - Must be square 
@@ -62,7 +62,7 @@ MODEL_PATH = os.path.join(DATA_PATH,"Models")
 
 MODEL_PATH = os.path.join(DATA_PATH,"Models")
 GENERATOR_PATH = os.path.join(MODEL_PATH,f"color_generator_{checkpoint}.h5")
-DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,"color_discriminator_{checkpoint}.h5")
+DISCRIMINATOR_PATH = os.path.join(MODEL_PATH,f"color_discriminator_{checkpoint}.h5")
 
 EPOCHS = 50
 BATCH_SIZE = 32
@@ -166,12 +166,16 @@ with mirrored_strategy.scope():
 		if os.path.isfile(GENERATOR_PATH) :
 			generator = tf.keras.models.load_model(GENERATOR_PATH)
 			print("Generator loaded")
+			generator_optimizer = Adam(2e-4,0.5)
+		
 		else:
 		
 			print("No generator file found")
 		if os.path.isfile(DISCRIMINATOR_PATH):
 			
 			discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH)
+			discriminator_optimizer = Adam(2e-4,0.5)
+
 			print("Discriminator loaded")
 		else:
 	
@@ -235,7 +239,7 @@ def train(dataset, epochs):
 		
 			save_images(epoch+checkpoint, train_dataset)
 			if(epoch%5==0):
-				print(f"Saving Model for epoch {epoch}")
+				print(f"Saving Model for epoch {epoch+checkpoint}")
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch+checkpoint}.h5"))
 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch+checkpoint}.h5"))
 
