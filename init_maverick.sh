@@ -37,4 +37,4 @@ pip3 install opencv-python --user
 
 echo "opencv Loaded"
 
-echo "Complete"
+echo "Complete Init"
