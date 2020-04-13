@@ -12,6 +12,9 @@ import os
 import time
 import cv2 as cv
 
+import horovod.tensorflow as hvd
+
+
 # Need to use "Agg" for machines without a display. Or it wil result in segmentation fault
 import matplotlib
 matplotlib.use("Agg")
@@ -29,10 +32,14 @@ from utils import save_images
 
 
 
-# This is to to enable eager mode in tensorflow v1.13.2
-tf.compat.v1.enable_eager_execution(
-    config=None, device_policy=None, execution_mode=None
-)
+# Horovod: initialize Horovod.
+hvd.init()
+
+# Horovod: pin GPU to be used to process local rank (one GPU per process)
+config = tf.ConfigProto()
+config.gpu_options.visible_device_list = str(hvd.local_rank())
+
+tf.enable_eager_execution(config=config)
 
 
 # Configration
@@ -65,7 +72,7 @@ INITIAL_TRAINING = True
 GENERATE_SQUARE = 128
 
 
-EPOCHS = 50
+STEPS = 10000
 BATCH_SIZE = 32
 BUFFER_SIZE = 60000
 
@@ -114,9 +121,9 @@ else:
 
 
 
-
-generator_optimizer = Adam(2e-4,0.5)
-discriminator_optimizer = Adam(2e-4,0.5)
+# scaling learning rate by number of GPUs.
+generator_optimizer = Adam(2e-4 * hvd.size(),0.5)
+discriminator_optimizer = Adam(2e-4 * hvd.size(),0.5)
 
 
 def train_step(images):
@@ -132,39 +139,43 @@ def train_step(images):
 		gen_loss = generator_loss(fake_output, real, generated_images)
 		disc_loss = discriminator_loss(real_output, fake_output)
 
+		gen_tape = hvd.DistributedGradientTape(gen_tape)
+		disc_tape = hvd.DistributedGradientTape(disc_tape)
+
 
 		gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
 		gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
 		generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
 		discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+
+
+		
+
+
 	return gen_loss,disc_loss
 
 def train(dataset, epochs):
 	start = time.time()
-	
-	for epoch in range(epochs):
-		epoch_start = time.time()
+	last_time = time.time()
+	for batch, image_batch in enumerate(dataset.take(epochs//hvd.size())):
+		if(batch==0):
+			hvd.broadcast_variables(generator.variables, root_rank=0)
+			hvd.broadcast_variables(discriminator.variables, root_rank=0)
 
-		gen_loss_list = []
-		disc_loss_list = []
+		g_loss, d_loss = train_step(image_batch)
+		
+		if batch % 10 == 0 and hvd.local_rank() == 0:
+			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
+			last_time= time.time()
+		
 
-		for image_batch in dataset:
-			t = train_step(image_batch)
-			gen_loss_list.append(t[0])
-			disc_loss_list.append(t[1])
-
-		g_loss = sum(gen_loss_list) / len(gen_loss_list)
-		d_loss = sum(disc_loss_list) / len(disc_loss_list)
-
-		epoch_elapsed = time.time()-epoch_start
-		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
 		#save_images(OUTPUT_PATH, epoch,dataset, generator)
-		if(epoch%10==0):
-			print(f"Saving Model for epoch {epoch}")
+		# if(batch%10==0):
+			# print(f"Saving Model for Step {epoch}")
 			#generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
 			#discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
-			save_images(OUTPUT_PATH, epoch,dataset, generator)
+			# save_images(OUTPUT_PATH, epoch,dataset, generator)
 
 
 	elapsed = time.time()-start
@@ -172,7 +183,7 @@ def train(dataset, epochs):
 
 print("Starting Training")
 
-train(train_dataset, EPOCHS)
+train(train_dataset, STEPS)
 
 
 print("Training Finished")
@@ -180,9 +191,9 @@ print("Training Finished")
 
 # saving the model to disk
 
-print("Saving Models")
-generator.save(GENERATOR_PATH_FINAL)
-discriminator.save(DISCRIMINATOR_PATH_FINAL)
+# print("Saving Models")
+# generator.save(GENERATOR_PATH_FINAL)
+# discriminator.save(DISCRIMINATOR_PATH_FINAL)
 
 
 
