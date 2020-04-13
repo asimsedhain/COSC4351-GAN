@@ -136,8 +136,8 @@ def train_step(images):
 		real_output = discriminator(real, training=True)
 		fake_output = discriminator(generated_images, training=True)
 
-	gen_loss = generator_loss(fake_output, real, generated_images)
-	disc_loss = discriminator_loss(real_output, fake_output)
+		gen_loss = generator_loss(fake_output, real, generated_images)
+		disc_loss = discriminator_loss(real_output, fake_output)
 
 	gen_tape = hvd.DistributedGradientTape(gen_tape)
 	disc_tape = hvd.DistributedGradientTape(disc_tape)
