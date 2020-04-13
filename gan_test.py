@@ -21,9 +21,9 @@ import matplotlib.pyplot as plt
 
 # Helper libraries
 from models import build_discriminator
-from model import build_generator
-from model import discriminator_loss
-from model import generator_loss
+from models import build_generator
+from models import discriminator_loss
+from models import generator_loss
 from utils import get_dataset
 from utils import save_images
 
