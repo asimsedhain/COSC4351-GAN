@@ -72,9 +72,9 @@ INITIAL_TRAINING = True
 GENERATE_SQUARE = 128
 
 
-STEPS = 20000
+STEPS = 200000
 BATCH_SIZE = 16
-BUFFER_SIZE = 60000
+BUFFER_SIZE = 20000
 
 
 
@@ -165,7 +165,7 @@ def train(dataset, epochs):
 
 		g_loss, d_loss = train_step(image_batch)
 		
-		if batch % 100 == 0 and hvd.local_rank() == 0:
+		if batch% 10 ==0 and hvd.local_rank() == 0:
 			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
 			last_time= time.time()
 		
