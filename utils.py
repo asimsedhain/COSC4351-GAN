@@ -58,7 +58,7 @@ import pathlib
 #        plt.close(fig)
 #        print(f"Saved Image: test_{cnt}.png")
 
-def get_dataset(path, buffer_size, batch_size):
+def get_dataset(path, buffer_size, batch_size, epochs):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
@@ -76,7 +76,7 @@ def get_dataset(path, buffer_size, batch_size):
 		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 		return preprocessed_yuv_images
 	img_ds = list_ds.map(parse_image)
-	return img_ds.shuffle(buffer_size).batch(batch_size)
+	return img_ds.shuffle(buffer_size).repeat(epochs).batch(batch_size)
 
 
 

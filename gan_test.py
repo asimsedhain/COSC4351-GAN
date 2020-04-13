@@ -48,7 +48,7 @@ tf.enable_eager_execution(config=config)
 TRAINING_DATA_PATH = "../val_set"
 
 # All the output and models will be saved inside the checkpoint path
-CHECKPOINT_PATH = "./"
+CHECKPOINT_PATH = "./test_horovod"
 
 # Sample images will be stored in the output path
 OUTPUT_PATH = os.path.join(CHECKPOINT_PATH, "output") 
@@ -71,11 +71,11 @@ INITIAL_TRAINING = True
 # Size of the image. The input data will also be scaled to this amount.
 GENERATE_SQUARE = 128
 
-
-STEPS = 200000
+EPOCHS = 100
 BATCH_SIZE = 16
-BUFFER_SIZE = 20000
-
+BUFFER_SIZE = 2**13
+DATASET_SIZE = 20000
+STEPS = (DATASET_SIZE//BATCH_SIZE)*EPOCHS
 
 
 
@@ -86,7 +86,7 @@ print(f"Will generate {GENERATE_SQUARE}px square images.")
 
 print(f"Images being loaded from {TRAINING_DATA_PATH}")
 
-train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE)
+train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, EPOCHS)
 print(f"Images loaded from {TRAINING_DATA_PATH}")
 
 
@@ -155,27 +155,25 @@ def train_step(images):
 
 	return gen_loss,disc_loss
 
-def train(dataset, epochs):
+def train(dataset, steps):
 	start = time.time()
 	last_time = time.time()
-	for batch, image_batch in enumerate(dataset.take(epochs//hvd.size())):
+	for batch, image_batch in enumerate(dataset.take(steps//hvd.size())):
+
 		if(batch==0):
 			hvd.broadcast_variables(generator.variables, root_rank=0)
 			hvd.broadcast_variables(discriminator.variables, root_rank=0)
 
 		g_loss, d_loss = train_step(image_batch)
 		
-		if batch% 10 ==0 and hvd.local_rank() == 0:
+		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.local_rank() == 0:
 			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
 			last_time= time.time()
-		
-
-		#save_images(OUTPUT_PATH, epoch,dataset, generator)
-		if(batch % 1000 == 0 and hvd.local_rank() == 0):
-			# print(f"Saving Model for Step {epoch}")
-			# generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-			# discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			# print(f"Saving Model for Step {batch}")
+			# generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
+			# discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
 			save_images(OUTPUT_PATH, batch,dataset, generator)
+			
 
 
 	elapsed = time.time()-start
