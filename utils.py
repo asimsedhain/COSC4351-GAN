@@ -58,7 +58,7 @@ import pathlib
 #        plt.close(fig)
 #        print(f"Saved Image: test_{cnt}.png")
 
-def getDataset(path, buffer_size, batch_size):
+def get_dataset(path, buffer_size, batch_size):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
@@ -81,12 +81,13 @@ def getDataset(path, buffer_size, batch_size):
 
 
 # Helper method for saving an output file while training.
-def save_images(path,cnt,dataset):
+def save_images(path,cnt,dataset, generator):
 	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
 	#sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
 	last_dimension_axis = len(sample_images.shape) - 1
 	y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
-	generated_images = generator.predict(y[0])
+	
+	generated_images = generator.predict(y[0].numpy())
 	y = tf.add(y, 0.5)
 	#sample_images_input = tf.add(sample_images_input, 0.5)
 	

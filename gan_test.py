@@ -38,7 +38,7 @@ tf.compat.v1.enable_eager_execution(
 # Configration
 
 # Training data directory
-TRAINING_DATA_PATH = "../val_set"
+TRAINING_DATA_PATH = "../test"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./"
@@ -91,8 +91,8 @@ print(f"Images loaded from {TRAINING_DATA_PATH}")
 
 if(INITIAL_TRAINING):
 	print("Initializing Generator and Discriminator")
-	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
-	discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
+	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
+	discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
 	print("Generator and Discriminator initialized")
 else:
 	print("Loading model from memory")
@@ -123,7 +123,7 @@ def train_step(images):
   
 	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
 	real = images[:,:, :, 1:3]
-
+	
 	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
 		generated_images = generator(seed, training=True)
 		real_output = discriminator(real, training=True)
@@ -159,11 +159,13 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 		print (f'Epoch {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {(epoch_elapsed)}')
-		save_images(OUTPUT_PATH, epoch,dataset)
-		if(epoch%5==0):
+		#save_images(OUTPUT_PATH, epoch,dataset, generator)
+		if(epoch%10==0):
 			print(f"Saving Model for epoch {epoch}")
-			generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-			discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			#generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+			#discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			save_images(OUTPUT_PATH, epoch,dataset, generator)
+
 
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')

@@ -17,7 +17,7 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
 
 
-def build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2)):
+def build_discriminator(image_shape=(128,128, 2)):
     model = Sequential()
 
     model.add(
@@ -59,7 +59,7 @@ def build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2)):
     return model
 
 
-def build_generator(channels=2, image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1)):
+def build_generator(channels=2, image_shape=(128, 128, 1)):
 
     input_layer = Input(shape=image_shape)
     x = Conv2D(64, kernel_size=3, activation="relu", padding="same")(input_layer)
