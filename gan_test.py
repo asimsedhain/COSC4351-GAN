@@ -45,7 +45,7 @@ tf.enable_eager_execution(config=config)
 # Configration
 
 # Training data directory
-TRAINING_DATA_PATH = "../test"
+TRAINING_DATA_PATH = "../val_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./"
@@ -72,8 +72,8 @@ INITIAL_TRAINING = True
 GENERATE_SQUARE = 128
 
 
-STEPS = 10000
-BATCH_SIZE = 32
+STEPS = 20000
+BATCH_SIZE = 16
 BUFFER_SIZE = 60000
 
 
@@ -165,21 +165,22 @@ def train(dataset, epochs):
 
 		g_loss, d_loss = train_step(image_batch)
 		
-		if batch % 10 == 0 and hvd.local_rank() == 0:
+		if batch % 100 == 0 and hvd.local_rank() == 0:
 			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
 			last_time= time.time()
 		
 
 		#save_images(OUTPUT_PATH, epoch,dataset, generator)
-		# if(batch%10==0):
+		if(batch % 1000 == 0 and hvd.local_rank() == 0):
 			# print(f"Saving Model for Step {epoch}")
-			#generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-			#discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
-			# save_images(OUTPUT_PATH, epoch,dataset, generator)
+			# generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+			# discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			save_images(OUTPUT_PATH, batch,dataset, generator)
 
 
 	elapsed = time.time()-start
-	print (f'Training time: {(elapsed)}')
+	if(hvd.local_rank()==0):
+		print (f'Training time: {(elapsed)}')
 
 print("Starting Training")
 
