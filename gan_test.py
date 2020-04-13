@@ -37,15 +37,8 @@ tf.compat.v1.enable_eager_execution(
 
 # Configration
 
-
-# Change the INITIAL_TRAINING variable to decide if model is to be loaded from memory or trained again.
-INITIAL_TRAINING = True
-
-# Size of the image. The input data will also be scaled to this amount.
-GENERATE_SQUARE = 128
-
 # Training data directory
-TRAINING_DATA_PATH = "../training_data_lab_128_128.npy"
+TRAINING_DATA_PATH = "../val_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./"
@@ -63,6 +56,14 @@ DISCRIMINATOR_PATH_PRE = os.path.join(MODEL_PATH,"color_discriminator_main.h5")
 # Path for the final models to be saved to after training
 GENERATOR_PATH_FINAL = os.path.join(MODEL_PATH,"color_generator_final.h5")
 DISCRIMINATOR_PATH_FINAL = os.path.join(MODEL_PATH,"color_discriminator_final.h5")
+
+
+# Change the INITIAL_TRAINING variable to decide if model is to be loaded from memory or trained again.
+INITIAL_TRAINING = True
+
+# Size of the image. The input data will also be scaled to this amount.
+GENERATE_SQUARE = 128
+
 
 EPOCHS = 50
 BATCH_SIZE = 32
