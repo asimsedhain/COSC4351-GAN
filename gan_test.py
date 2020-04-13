@@ -167,7 +167,6 @@ def train(dataset, epochs):
 	elapsed = time.time()-start
 	print (f'Training time: {(elapsed)}')
 
-
 print("Starting Training")
 
 train(train_dataset, EPOCHS)
