@@ -11,4 +11,4 @@ Here are some of our current results:
 
 ## TODO
 * Add user guided colorization in the model
-* Develop the model
+* Deploy the model
