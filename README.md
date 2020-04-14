@@ -1,1 +1,2 @@
-# COSC4351-GAN
+# Image Colorization with GAN
+
