@@ -37,4 +37,6 @@ pip3 install opencv-python
 
 echo "opencv Loaded"
 
+export IBRUN_TASKS_PER_NODE=2
+echo "Env variable set"
 echo "Complete"

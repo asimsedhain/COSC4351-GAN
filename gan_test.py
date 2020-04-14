@@ -169,10 +169,12 @@ def train(dataset, steps):
 		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.local_rank() == 0:
 			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
 			last_time= time.time()
-			# print(f"Saving Model for Step {batch}")
-			# generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
-			# discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
 			save_images(OUTPUT_PATH, batch,dataset, generator)
+			if(batch%5*(DATASET_SIZE//(BATCH_SIZE*hvd.size()))==0): 
+				print(f"Saving Model for Step {batch}")
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
+
 			
 
 
@@ -189,20 +191,8 @@ print("Training Finished")
 
 
 # saving the model to disk
-
-# print("Saving Models")
-# generator.save(GENERATOR_PATH_FINAL)
-# discriminator.save(DISCRIMINATOR_PATH_FINAL)
-
-
-
-
-
-
-
-
-
-
-
-
+if hvd.local_rank() == 0:
+	print("Saving Final Models")
+	generator.save(GENERATOR_PATH_FINAL)
+	discriminator.save(DISCRIMINATOR_PATH_FINAL)
 
