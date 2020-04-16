@@ -71,7 +71,7 @@ INITIAL_TRAINING = True
 # Size of the image. The input data will also be scaled to this amount.
 GENERATE_SQUARE = 128
 
-EPOCHS = 100
+EPOCHS = 20000
 BATCH_SIZE = 16
 BUFFER_SIZE = 2**13
 DATASET_SIZE = 20000
