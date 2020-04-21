@@ -209,13 +209,13 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 
-		save_images(OUTPUT_PATH, batch,dataset, generator, hvd.rank()==0)
+		save_images(OUTPUT_PATH, epoch,dataset, generator, hvd.rank()==0)
 		if(hvd.rank()==0):
 			tf.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
 			if(epoch%5==0):
-				tf.print(f"Saving Model for Step {batch}", output_stream=sys.stdout)
-				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
-				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
+				tf.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 	elapsed = time.time()-start
 	if(hvd.rank()==0):
