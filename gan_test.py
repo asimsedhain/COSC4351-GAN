@@ -12,7 +12,9 @@ import os
 import time
 import cv2 as cv
 import sys
+from datetime import datetime
 
+# Need this for distributed training
 import horovod.tensorflow as hvd
 
 
@@ -30,6 +32,7 @@ from models import discriminator_loss
 from models import generator_loss
 from utils import get_dataset
 from utils import save_images
+from utils import logger
 
 
 
@@ -41,7 +44,7 @@ config = tf.ConfigProto()
 config.gpu_options.visible_device_list = str(hvd.local_rank())
 
 tf.enable_eager_execution(config=config)
-
+logger = logger(hvd)
 
 # Configration
 
@@ -78,15 +81,15 @@ BUFFER_SIZE = 2**13
 
 
 
-tf.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=sys.stdout)
+logger.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=sys.stdout)
 
 
 
 
-tf.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
+logger.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
 train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, hvd.size(), hvd.rank())
-tf.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
+logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
 
 
@@ -96,23 +99,23 @@ tf.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 # Checks if you want to continue training model from disk or start a new
 
 if(INITIAL_TRAINING):
-	tf.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
+	logger.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
 	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
 	discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
-	tf.print("Generator and Discriminator initialized", output_stream=sys.stdout)
+	logger.print("Generator and Discriminator initialized", output_stream=sys.stdout)
 else:
-	tf.print("Loading model from memory", output_stream=sys.stdout)
+	logger.print("Loading model from memory", output_stream=sys.stdout)
 	if os.path.isfile(GENERATOR_PATH_PRE):
 		generator = tf.keras.models.load_model(GENERATOR_PATH_PRE)
-		tf.print("Generator loaded", output_stream=sys.stdout)
+		logger.print("Generator loaded", output_stream=sys.stdout)
 	else:
-		tf.print("No generator file found", output_stream=sys.stdout)
+		logger.print("No generator file found", output_stream=sys.stdout)
 	if os.path.isfile(DISCRIMINATOR_PATH_PRE):
 		
 		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH_PRE)
-		tf.print("Discriminator loaded", output_stream=sys.stdout)
+		logger.print("Discriminator loaded", output_stream=sys.stdout)
 	else:
-		tf.print("No discriminator file found", output_stream=sys.stdout)
+		logger.print("No discriminator file found", output_stream=sys.stdout)
 		
 
 
@@ -211,27 +214,27 @@ def train(dataset, epochs):
 
 		save_images(OUTPUT_PATH, epoch,dataset, generator, hvd.rank()==0)
 		if(hvd.rank()==0):
-			tf.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
+			logger.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
 			if(epoch%5==0):
-				tf.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
+				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 	elapsed = time.time()-start
 	if(hvd.rank()==0):
-		tf.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
+		logger.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
 
-tf.print("Starting Training", output_stream=sys.stdout)
+logger.print("Starting Training", output_stream=sys.stdout)
 
 train(train_dataset, EPOCHS)
 
 
-tf.print("Training Finished", output_stream=sys.stdout)
+logger.print("Training Finished", output_stream=sys.stdout)
 
 
 # saving the model to disk
 if hvd.rank() == 0:
-	tf.print("Saving Final Models", output_stream=sys.stdout)
+	logger.print("Saving Final Models", output_stream=sys.stdout)
 	generator.save(GENERATOR_PATH_FINAL)
 	discriminator.save(DISCRIMINATOR_PATH_FINAL)
 
