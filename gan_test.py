@@ -11,6 +11,7 @@ import numpy as np
 import os 
 import time
 import cv2 as cv
+import sys
 
 import horovod.tensorflow as hvd
 
@@ -71,23 +72,21 @@ INITIAL_TRAINING = True
 # Size of the image. The input data will also be scaled to this amount.
 GENERATE_SQUARE = 128
 
-EPOCHS = 2000
+EPOCHS = 200
 BATCH_SIZE = 16
 BUFFER_SIZE = 2**13
-DATASET_SIZE = 400000
-STEPS = (DATASET_SIZE//BATCH_SIZE)*EPOCHS
 
 
 
-print(f"Will generate {GENERATE_SQUARE}px square images.")
+tf.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=sys.stdout)
 
 
 
 
-print(f"Images being loaded from {TRAINING_DATA_PATH}")
+tf.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
-train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, -1)
-print(f"Images loaded from {TRAINING_DATA_PATH}")
+train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, hvd.size(), hvd.rank())
+tf.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
 
 
@@ -97,23 +96,23 @@ print(f"Images loaded from {TRAINING_DATA_PATH}")
 # Checks if you want to continue training model from disk or start a new
 
 if(INITIAL_TRAINING):
-	print("Initializing Generator and Discriminator")
+	tf.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
 	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
 	discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
-	print("Generator and Discriminator initialized")
+	tf.print("Generator and Discriminator initialized", output_stream=sys.stdout)
 else:
-	print("Loading model from memory")
+	tf.print("Loading model from memory", output_stream=sys.stdout)
 	if os.path.isfile(GENERATOR_PATH_PRE):
 		generator = tf.keras.models.load_model(GENERATOR_PATH_PRE)
-		print("Generator loaded")
+		tf.print("Generator loaded", output_stream=sys.stdout)
 	else:
-		print("No generator file found")
+		tf.print("No generator file found", output_stream=sys.stdout)
 	if os.path.isfile(DISCRIMINATOR_PATH_PRE):
 		
 		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH_PRE)
-		print("Discriminator loaded")
+		tf.print("Discriminator loaded", output_stream=sys.stdout)
 	else:
-		print("No discriminator file found")
+		tf.print("No discriminator file found", output_stream=sys.stdout)
 		
 
 
@@ -155,44 +154,84 @@ def train_step(images):
 
 	return gen_loss,disc_loss
 
-def train(dataset, steps):
-	start = time.time()
-	last_time = time.time()
-	for batch, image_batch in enumerate(dataset.take(steps//hvd.size())):
+# def train(dataset, steps):
+# 	start = time.time()
+# 	last_time = time.time()
+# 	for batch, image_batch in enumerate(dataset.take(steps//hvd.size())):
 
-		if(batch==0):
-			hvd.broadcast_variables(generator.variables, root_rank=0)
-			hvd.broadcast_variables(discriminator.variables, root_rank=0)
+# 		if(batch==0):
+# 			hvd.broadcast_variables(generator.variables, root_rank=0)
+# 			hvd.broadcast_variables(discriminator.variables, root_rank=0)
+# 			hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
+# 			hvd.broadcast_variables(discriminator_optimizer.variables(), root_rank=0)
+			
 
-		g_loss, d_loss = train_step(image_batch)
+# 		g_loss, d_loss = train_step(image_batch)
 		
-		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.rank() == 0:
-			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
-			last_time= time.time()
-			save_images(OUTPUT_PATH, batch,dataset, generator)
-			if(batch%5*(DATASET_SIZE//(BATCH_SIZE*hvd.size()))==0): 
-				print(f"Saving Model for Step {batch}")
-				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
-				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
+# 		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.rank() == 0:
+# 			tf.print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}', output_stream=sys.stdout)
+# 			last_time= time.time()
+# 			save_images(OUTPUT_PATH, batch,dataset, generator)
+# 			if(batch%5*(DATASET_SIZE//(BATCH_SIZE*hvd.size()))==0): 
+# 				tf.print(f"Saving Model for Step {batch}", output_stream=sys.stdout)
+# 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
+# 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
 
 			
 
 
+# 	elapsed = time.time()-start
+# 	if(hvd.rank()==0):
+# 		tf.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
+
+
+def train(dataset, epochs):
+	start = time.time()
+	
+	for epoch in range(epochs):
+		epoch_start = time.time()
+
+		gen_loss_list = []
+		disc_loss_list = []
+
+		for batch, image_batch in enumerate(dataset):
+			losses = train_step(image_batch)
+			gen_loss_list.append(losses[0])
+			disc_loss_list.append(losses[1])
+			if(batch==0 and epoch ==0):
+				hvd.broadcast_variables(generator.variables, root_rank=0)
+				hvd.broadcast_variables(discriminator.variables, root_rank=0)
+				hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
+				hvd.broadcast_variables(discriminator_optimizer.variables(), root_rank=0)
+
+		g_loss = sum(gen_loss_list) / len(gen_loss_list)
+		d_loss = sum(disc_loss_list) / len(disc_loss_list)
+
+		epoch_elapsed = time.time()-epoch_start
+
+		save_images(OUTPUT_PATH, batch,dataset, generator, hvd.rank()==0)
+		if(hvd.rank()==0):
+			tf.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
+			if(epoch%5==0):
+				tf.print(f"Saving Model for Step {batch}", output_stream=sys.stdout)
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
+
 	elapsed = time.time()-start
 	if(hvd.rank()==0):
-		print (f'Training time: {(elapsed)}')
+		tf.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
 
-print("Starting Training")
+tf.print("Starting Training", output_stream=sys.stdout)
 
-train(train_dataset, STEPS)
+train(train_dataset, EPOCHS)
 
 
-print("Training Finished")
+tf.print("Training Finished", output_stream=sys.stdout)
 
 
 # saving the model to disk
 if hvd.rank() == 0:
-	print("Saving Final Models")
+	tf.print("Saving Final Models", output_stream=sys.stdout)
 	generator.save(GENERATOR_PATH_FINAL)
 	discriminator.save(DISCRIMINATOR_PATH_FINAL)
 

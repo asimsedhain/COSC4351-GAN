@@ -58,16 +58,13 @@ import pathlib
 #        plt.close(fig)
 #        print(f"Saved Image: test_{cnt}.png")
 
-def get_dataset(path, buffer_size, batch_size, epochs):
+def get_dataset(path, buffer_size, batch_size, num_workers, worker_index):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	def parse_image(filename):
 		image = tf.io.read_file(filename)
 		image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
 		image = tf.image.convert_image_dtype(image, tf.float32)
-
-	
-		
 		image = tf.image.rgb_to_yuv(image)
 		image = tf.image.resize(image, [128, 128])
 		last_dimension_axis = len(image.shape) - 1
@@ -75,13 +72,13 @@ def get_dataset(path, buffer_size, batch_size, epochs):
 		y = tf.subtract(y, 0.5)
 		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 		return preprocessed_yuv_images
-	img_ds = list_ds.map(parse_image)
-	return img_ds.repeat(epochs).shuffle(buffer_size).batch(batch_size)
-
-
+	# img_ds = list_ds.map(parse_image)
+	
+	img_ds = list_ds.shard(num_workers, worker_index).shuffle(buffer_size).batch(batch_size).map(parse_image)
+	return img_ds
 
 # Helper method for saving an output file while training.
-def save_images(path,cnt,dataset, generator):
+def save_images(path,cnt,dataset, generator, save_or_not):
 	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
 	#sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
 	last_dimension_axis = len(sample_images.shape) - 1
@@ -112,6 +109,8 @@ def save_images(path,cnt,dataset, generator):
 		plt.yticks([])
 		plt.title("Model Generated")
 		plt.imshow(generated_images[i])
-	fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
+	
+	if(save_or_not):
+		fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
 	plt.close(fig)
 	print(f"Saved Image: test_{cnt}.png")
