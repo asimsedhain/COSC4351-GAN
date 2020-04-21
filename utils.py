@@ -76,7 +76,7 @@ def get_dataset(path, buffer_size, batch_size, epochs):
 		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 		return preprocessed_yuv_images
 	img_ds = list_ds.map(parse_image)
-	return img_ds.shuffle(buffer_size).repeat(epochs).batch(batch_size)
+	return img_ds.repeat(epochs).shuffle(buffer_size).batch(batch_size)
 
 
 

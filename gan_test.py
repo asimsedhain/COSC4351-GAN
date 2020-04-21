@@ -45,7 +45,7 @@ tf.enable_eager_execution(config=config)
 # Configration
 
 # Training data directory
-TRAINING_DATA_PATH = "../val_set"
+TRAINING_DATA_PATH = "../train_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"
@@ -71,10 +71,10 @@ INITIAL_TRAINING = True
 # Size of the image. The input data will also be scaled to this amount.
 GENERATE_SQUARE = 128
 
-EPOCHS = 20000
+EPOCHS = 2000
 BATCH_SIZE = 16
 BUFFER_SIZE = 2**13
-DATASET_SIZE = 20000
+DATASET_SIZE = 400000
 STEPS = (DATASET_SIZE//BATCH_SIZE)*EPOCHS
 
 
@@ -86,7 +86,7 @@ print(f"Will generate {GENERATE_SQUARE}px square images.")
 
 print(f"Images being loaded from {TRAINING_DATA_PATH}")
 
-train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, EPOCHS)
+train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, -1)
 print(f"Images loaded from {TRAINING_DATA_PATH}")
 
 
@@ -166,7 +166,7 @@ def train(dataset, steps):
 
 		g_loss, d_loss = train_step(image_batch)
 		
-		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.local_rank() == 0:
+		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.rank() == 0:
 			print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}')
 			last_time= time.time()
 			save_images(OUTPUT_PATH, batch,dataset, generator)
@@ -179,7 +179,7 @@ def train(dataset, steps):
 
 
 	elapsed = time.time()-start
-	if(hvd.local_rank()==0):
+	if(hvd.rank()==0):
 		print (f'Training time: {(elapsed)}')
 
 print("Starting Training")
@@ -191,7 +191,7 @@ print("Training Finished")
 
 
 # saving the model to disk
-if hvd.local_rank() == 0:
+if hvd.rank() == 0:
 	print("Saving Final Models")
 	generator.save(GENERATOR_PATH_FINAL)
 	discriminator.save(DISCRIMINATOR_PATH_FINAL)
