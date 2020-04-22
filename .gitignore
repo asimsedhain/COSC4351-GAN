@@ -3,3 +3,4 @@ output
 Models
 output_*
 ._py*
+horovod_*
