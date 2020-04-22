@@ -3,8 +3,8 @@
 
 
 #SBATCH -J gan_training
-#SBATCH -o output_o.o%j
-#SBATCH -e output_e.e%j
+#SBATCH -o horovod_o_output.o%j
+#SBATCH -e horovod_e_output.e%j
 #SBATCH -p gtx
 #SBATCH -N 4
 #SBATCH -n 16

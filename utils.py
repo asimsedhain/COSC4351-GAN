@@ -74,7 +74,7 @@ def get_dataset(path, buffer_size, batch_size, num_workers, worker_index):
 		return preprocessed_yuv_images
 	# img_ds = list_ds.map(parse_image)
 	
-	img_ds = list_ds.shard(num_workers, worker_index).shuffle(buffer_size).batch(batch_size).map(parse_image)
+	img_ds = list_ds.shard(num_workers, worker_index).map(parse_image).repeat(-1).shuffle(buffer_size).batch(batch_size)
 	return img_ds
 
 # Helper method for saving an output file while training.
