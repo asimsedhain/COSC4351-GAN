@@ -44,6 +44,8 @@ config = tf.ConfigProto()
 config.gpu_options.visible_device_list = str(hvd.local_rank())
 
 tf.enable_eager_execution(config=config)
+
+# logger object
 logger = logger(hvd)
 
 # Configration
@@ -81,14 +83,15 @@ BUFFER_SIZE = 2**13
 
 
 
-logger.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=sys.stdout)
 
+logger.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=sys.stdout)
 
 
 
 logger.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
 train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, hvd.size(), hvd.rank())
+
 logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
 
@@ -97,7 +100,7 @@ logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdou
 
 
 # Checks if you want to continue training model from disk or start a new
-
+# Set INITIAL_TRAINING to true if you want to continue training
 if(INITIAL_TRAINING):
 	logger.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
 	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
@@ -128,6 +131,7 @@ generator_optimizer = Adam(2e-4 * hvd.size(),0.5)
 discriminator_optimizer = Adam(2e-4 * hvd.size(),0.5)
 
 
+# This is the training step function. It consums one batch and applies the gradient
 def train_step(images):
   
 	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
@@ -157,37 +161,9 @@ def train_step(images):
 
 	return gen_loss,disc_loss
 
-# def train(dataset, steps):
-# 	start = time.time()
-# 	last_time = time.time()
-# 	for batch, image_batch in enumerate(dataset.take(steps//hvd.size())):
-
-# 		if(batch==0):
-# 			hvd.broadcast_variables(generator.variables, root_rank=0)
-# 			hvd.broadcast_variables(discriminator.variables, root_rank=0)
-# 			hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
-# 			hvd.broadcast_variables(discriminator_optimizer.variables(), root_rank=0)
-			
-
-# 		g_loss, d_loss = train_step(image_batch)
-		
-# 		if batch% (DATASET_SIZE//(BATCH_SIZE*hvd.size())) ==0 and hvd.rank() == 0:
-# 			tf.print (f'batch: {batch}, gen loss={g_loss},disc loss={d_loss}, {(time.time()-last_time)}', output_stream=sys.stdout)
-# 			last_time= time.time()
-# 			save_images(OUTPUT_PATH, batch,dataset, generator)
-# 			if(batch%5*(DATASET_SIZE//(BATCH_SIZE*hvd.size()))==0): 
-# 				tf.print(f"Saving Model for Step {batch}", output_stream=sys.stdout)
-# 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{batch}.h5"))
-# 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{batch}.h5"))
-
-			
 
 
-# 	elapsed = time.time()-start
-# 	if(hvd.rank()==0):
-# 		tf.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
-
-
+# Main training loop
 def train(dataset, epochs):
 	start = time.time()
 	
@@ -224,10 +200,13 @@ def train(dataset, epochs):
 	if(hvd.rank()==0):
 		logger.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
 
+
+
+
 logger.print("Starting Training", output_stream=sys.stdout)
 
+# Starting the training
 train(train_dataset, EPOCHS)
-
 
 logger.print("Training Finished", output_stream=sys.stdout)
 
