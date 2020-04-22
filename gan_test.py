@@ -96,7 +96,7 @@ logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdou
 
 
 
-
+sample_images = tf.convert_to_tensor([i.numpy() for i in train_dataset.take(1)])
 
 
 # Checks if you want to continue training model from disk or start a new
@@ -188,8 +188,9 @@ def train(dataset, epochs):
 
 		epoch_elapsed = time.time()-epoch_start
 
-		save_images(OUTPUT_PATH, epoch,dataset, generator, hvd.rank()==0)
+		
 		if(hvd.rank()==0):
+			save_images(OUTPUT_PATH, epoch,sample_images, generator, hvd.rank()==0)
 			logger.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
 			if(epoch%5==0):
 				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)

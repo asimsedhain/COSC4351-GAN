@@ -74,18 +74,12 @@ def get_dataset(path, buffer_size, batch_size, num_workers, worker_index):
 		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 		return preprocessed_yuv_images
 	# img_ds = list_ds.map(parse_image)
-<<<<<<< HEAD
-	
-	img_ds = list_ds.shard(num_workers, worker_index).map(parse_image).repeat(-1).shuffle(buffer_size).batch(batch_size)
-=======
 	img_ds = list_ds.shard(num_workers, worker_index).map(parse_image).shuffle(buffer_size).batch(batch_size)
->>>>>>> 7a404fd854656adb156b558188f3d60a00236b4f
 	return img_ds
 
 # Helper method for saving an output file while training.
-def save_images(path,cnt,dataset, generator, save_or_not):
-	sample_images = tf.convert_to_tensor([i.numpy() for i in dataset.take(1)])
-	#sample_images_input = tf.reshape(sample_images[0,0:16, :, :, 0],(16, 128, 128, 1))
+def save_images(path,cnt,sample_images, generator, save_or_not):
+	
 	last_dimension_axis = len(sample_images.shape) - 1
 	y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
 	
