@@ -120,4 +120,4 @@ class logger(object):
 		self.hvd = hvd
 	
 	def print(self, str, output_stream):
-		tf.print(f"{datetime.now()} GPU:{hvd.rank()}: {str}", output_stream = output_stream)
+		tf.print(f"{datetime.now()} GPU:{self.hvd.rank()}: {str}", output_stream = output_stream)

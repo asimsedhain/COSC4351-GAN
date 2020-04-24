@@ -79,7 +79,7 @@ GENERATE_SQUARE = 128
 
 EPOCHS = 200
 BATCH_SIZE = 16
-BUFFER_SIZE = 2**13
+BUFFER_SIZE = 2**15
 
 
 
@@ -166,18 +166,19 @@ def train_step(images):
 # Main training loop
 def train(dataset, epochs):
 	start = time.time()
-	
+	batch =0	
 	for epoch in range(epochs):
 		epoch_start = time.time()
 
 		gen_loss_list = []
 		disc_loss_list = []
 
-		for batch, image_batch in enumerate(dataset):
+		for image_batch in dataset:
 			losses = train_step(image_batch)
 			gen_loss_list.append(losses[0])
 			disc_loss_list.append(losses[1])
 			if(batch==0 and epoch ==0):
+				batch=1
 				hvd.broadcast_variables(generator.variables, root_rank=0)
 				hvd.broadcast_variables(discriminator.variables, root_rank=0)
 				hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
