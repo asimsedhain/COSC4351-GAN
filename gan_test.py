@@ -51,7 +51,7 @@ logger = logger(hvd)
 # Configration
 
 # Training data directory
-TRAINING_DATA_PATH = "../train_set"
+TRAINING_DATA_PATH = "../val_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"
