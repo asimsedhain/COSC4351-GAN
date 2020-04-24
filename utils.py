@@ -81,8 +81,7 @@ def get_sample(path):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	list_ds = list_ds.take(16)
-	list_ds = list_ds.batch(16)
-	img_ds = list_ds.map(parse_image)
+	img_ds = list_ds.map(parse_image).batch(16)
 	return img_ds
 
 # Helper method for saving an output file while training.

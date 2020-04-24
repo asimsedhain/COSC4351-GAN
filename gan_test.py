@@ -52,7 +52,7 @@ logger = logger(hvd)
 # Configration
 
 # Training data directory
-TRAINING_DATA_PATH = "../val_set"
+TRAINING_DATA_PATH = "../train_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"
@@ -97,7 +97,7 @@ logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdou
 
 sample_images = get_sample(TRAINING_DATA_PATH)
 
-# sample_images = tf.convert_to_tensor([i.numpy() for i in train_dataset.take(1)])
+sample_images = tf.convert_to_tensor([i.numpy() for i in sample_images.take(1)])
 
 
 # Checks if you want to continue training model from disk or start a new
