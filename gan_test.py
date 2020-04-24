@@ -31,6 +31,7 @@ from models import build_generator
 from models import discriminator_loss
 from models import generator_loss
 from utils import get_dataset
+from utils import get_sample
 from utils import save_images
 from utils import logger
 
@@ -94,9 +95,9 @@ train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, hvd.siz
 
 logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
+sample_images = get_sample(TRAINING_DATA_PATH)
 
-
-sample_images = tf.convert_to_tensor([i.numpy() for i in train_dataset.take(1)])
+# sample_images = tf.convert_to_tensor([i.numpy() for i in train_dataset.take(1)])
 
 
 # Checks if you want to continue training model from disk or start a new

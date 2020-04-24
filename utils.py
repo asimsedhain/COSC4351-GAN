@@ -59,22 +59,30 @@ from datetime import datetime
 #        plt.close(fig)
 #        print(f"Saved Image: test_{cnt}.png")
 
+def parse_image(filename):
+	image = tf.io.read_file(filename)
+	image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
+	image = tf.image.convert_image_dtype(image, tf.float32)
+	image = tf.image.rgb_to_yuv(image)
+	image = tf.image.resize(image, [128, 128])
+	last_dimension_axis = len(image.shape) - 1
+	y, u, v = tf.split(image, 3, axis=last_dimension_axis)
+	y = tf.subtract(y, 0.5)
+	preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
+	return preprocessed_yuv_images
+
 def get_dataset(path, buffer_size, batch_size, num_workers, worker_index):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
-	def parse_image(filename):
-		image = tf.io.read_file(filename)
-		image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
-		image = tf.image.convert_image_dtype(image, tf.float32)
-		image = tf.image.rgb_to_yuv(image)
-		image = tf.image.resize(image, [128, 128])
-		last_dimension_axis = len(image.shape) - 1
-		y, u, v = tf.split(image, 3, axis=last_dimension_axis)
-		y = tf.subtract(y, 0.5)
-		preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
-		return preprocessed_yuv_images
-	# img_ds = list_ds.map(parse_image)
 	img_ds = list_ds.shard(num_workers, worker_index).map(parse_image).shuffle(buffer_size).batch(batch_size)
+	return img_ds
+
+def get_sample(path):
+	train_path = pathlib.Path(path)
+	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
+	list_ds = list_ds.take(16)
+	list_ds = list_ds.batch(16)
+	img_ds = list_ds.map(parse_image)
 	return img_ds
 
 # Helper method for saving an output file while training.
