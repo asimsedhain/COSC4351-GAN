@@ -12,7 +12,6 @@ import os
 import time
 import cv2 as cv
 import sys
-from datetime import datetime
 
 # Need this for distributed training
 import horovod.tensorflow as hvd
