@@ -2,8 +2,6 @@ import tensorflow as tf
 import numpy as np
 import os
 import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import cv2 as cv
 import pathlib
 from datetime import datetime
@@ -102,23 +100,23 @@ def save_images(path,cnt,sample_images, generator, save_or_not):
 	sample_images = sample_images.numpy()
     
 
-	fig = plt.figure(figsize=(20, 10))
+	fig = matplotlib.pyplot.figure(figsize=(20, 10))
 
 	for i in range(16):
-		plt.subplot(4,8,(2*i) +1)
-		plt.xticks([])
-		plt.yticks([])
-		plt.title("Ground Truth")
-		plt.imshow(sample_images[0, i])
-		plt.subplot(4,8,(2*i) + 2)
-		plt.xticks([])
-		plt.yticks([])
-		plt.title("Model Generated")
-		plt.imshow(generated_images[i])
+		matplotlib.pyplot.subplot(4,8,(2*i) +1)
+		matplotlib.pyplot.xticks([])
+		matplotlib.pyplot.yticks([])
+		matplotlib.pyplot.title("Ground Truth")
+		matplotlib.pyplot.imshow(sample_images[0, i])
+		matplotlib.pyplot.subplot(4,8,(2*i) + 2)
+		matplotlib.pyplot.xticks([])
+		matplotlib.pyplot.yticks([])
+		matplotlib.pyplot.title("Model Generated")
+		matplotlib.pyplot.imshow(generated_images[i])
 	
 	if(save_or_not):
 		fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
-	plt.close(fig)
+	matplotlib.pyplot.close(fig)
 	print(f"Saved Image: test_{cnt}.png")
 
 
