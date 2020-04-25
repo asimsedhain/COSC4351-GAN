@@ -1,8 +1,10 @@
 import tensorflow as tf
 import numpy as np
 import os
-import matplotlib
 import cv2 as cv
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import pathlib
 from datetime import datetime
 
@@ -69,10 +71,11 @@ def parse_image(filename):
 	preprocessed_yuv_images = tf.concat([y, u, v], axis=last_dimension_axis)
 	return preprocessed_yuv_images
 
-def get_dataset(path, buffer_size, batch_size, num_workers, worker_index):
+def get_dataset(path, buffer_size, batch_size):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
-	img_ds = list_ds.apply(tf.data.experimental.filter_for_shard(num_workers, worker_index)).map(parse_image).shuffle(buffer_size).batch(batch_size)
+	
+	img_ds = list_ds.repeat().shuffle(buffer_size).map(parse_image, num_parallel_calls = 16).batch(batch_size).prefetch(buffer_size = 1000)
 	return img_ds
 
 def get_sample(path):
@@ -100,25 +103,24 @@ def save_images(path,cnt,sample_images, generator, save_or_not):
 	sample_images = sample_images.numpy()
     
 
-	fig = matplotlib.pyplot.figure(figsize=(20, 10))
+	fig = plt.figure(figsize=(20, 10))
 
 	for i in range(16):
-		matplotlib.pyplot.subplot(4,8,(2*i) +1)
-		matplotlib.pyplot.xticks([])
-		matplotlib.pyplot.yticks([])
-		matplotlib.pyplot.title("Ground Truth")
-		matplotlib.pyplot.imshow(sample_images[0, i])
-		matplotlib.pyplot.subplot(4,8,(2*i) + 2)
-		matplotlib.pyplot.xticks([])
-		matplotlib.pyplot.yticks([])
-		matplotlib.pyplot.title("Model Generated")
-		matplotlib.pyplot.imshow(generated_images[i])
+		plt.subplot(4,8,(2*i) +1)
+		plt.xticks([])
+		plt.yticks([])
+		plt.title("Ground Truth")
+		plt.imshow(sample_images[0, i])
+		plt.subplot(4,8,(2*i) + 2)
+		plt.xticks([])
+		plt.yticks([])
+		plt.title("Model Generated")
+		plt.imshow(generated_images[i])
 	
 	if(save_or_not):
 		fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
-	matplotlib.pyplot.close(fig)
+	plt.close(fig)
 	print(f"Saved Image: test_{cnt}.png")
-
 
 class logger(object):
 	def __init__(self, hvd):

@@ -55,7 +55,8 @@ logger = logger(hvd)
 matplotlib.use("Agg")
 
 # Training data directory
-TRAINING_DATA_PATH = "../train_set"
+TRAINING_DATA_PATH = "../val_set"
+DATASET_SIZE = 20000
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"
@@ -82,9 +83,8 @@ INITIAL_TRAINING = True
 GENERATE_SQUARE = 128
 
 EPOCHS = 200
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 BUFFER_SIZE = 2**15
-
 
 
 
@@ -94,7 +94,7 @@ logger.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=
 
 logger.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
-train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE, hvd.size(), hvd.rank())
+train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE)
 
 logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
@@ -177,7 +177,7 @@ def train(dataset, epochs):
 		gen_loss_list = []
 		disc_loss_list = []
 
-		for image_batch in dataset:
+		for image_batch in dataset.take(DATASET_SIZE//(BATCH_SIZE*hvd.size())):
 			losses = train_step(image_batch)
 			gen_loss_list.append(losses[0])
 			disc_loss_list.append(losses[1])
