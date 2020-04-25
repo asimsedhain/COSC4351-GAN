@@ -13,7 +13,6 @@ import time
 import cv2 as cv
 import sys
 from datetime import datetime
-
 # Need this for distributed training
 import horovod.tensorflow as hvd
 
@@ -42,7 +41,9 @@ hvd.init()
 
 # Horovod: pin GPU to be used to process local rank (one GPU per process)
 config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 config.gpu_options.visible_device_list = str(hvd.local_rank())
+
 
 tf.enable_eager_execution(config=config)
 
@@ -50,6 +51,7 @@ tf.enable_eager_execution(config=config)
 logger = logger(hvd)
 
 # Configration
+
 
 # Training data directory
 TRAINING_DATA_PATH = "../train_set"
@@ -184,13 +186,11 @@ def train(dataset, epochs):
 				hvd.broadcast_variables(discriminator.variables, root_rank=0)
 				hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
 				hvd.broadcast_variables(discriminator_optimizer.variables(), root_rank=0)
-
 		g_loss = sum(gen_loss_list) / len(gen_loss_list)
 		d_loss = sum(disc_loss_list) / len(disc_loss_list)
 
 		epoch_elapsed = time.time()-epoch_start
-
-		
+	
 		if(hvd.rank()==0):
 			save_images(OUTPUT_PATH, epoch,sample_images, generator, hvd.rank()==0)
 			logger.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
