@@ -54,8 +54,8 @@ logger = logger(hvd)
 matplotlib.use("Agg")
 
 # Training data directory
-TRAINING_DATA_PATH = "../val_set"
-DATASET_SIZE = 20000
+TRAINING_DATA_PATH = "../test"
+DATASET_SIZE = 1000
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"

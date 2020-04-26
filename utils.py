@@ -73,9 +73,9 @@ def parse_image(filename):
 
 def get_dataset(path, buffer_size, batch_size):
 	train_path = pathlib.Path(path)
-	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
+	list_ds = tf.data.Dataset.list_files(str(train_path/'*')).cache()
 	
-	img_ds = list_ds.repeat().shuffle(buffer_size).map(parse_image, num_parallel_calls = 16).batch(batch_size).prefetch(buffer_size = 1000)
+	img_ds = list_ds.repeat().shuffle(buffer_size).map(parse_image, num_parallel_calls = 16).batch(batch_size).prefetch(buffer_size = 100)
 	return img_ds
 
 def get_sample(path):
