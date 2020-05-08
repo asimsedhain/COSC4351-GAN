@@ -12,7 +12,7 @@ import os
 import time
 import cv2 as cv
 import sys
-
+import psutil
 # Need this for distributed training
 import horovod.tensorflow as hvd
 
@@ -62,7 +62,6 @@ CHECKPOINT_PATH = "./test_horovod"
 
 # Sample images will be stored in the output path
 OUTPUT_PATH = os.path.join(CHECKPOINT_PATH, "output") 
-
 # Path for the model. It is inside the checkpoint directory
 MODEL_PATH = os.path.join(CHECKPOINT_PATH,"Models")
 
@@ -194,6 +193,7 @@ def train(dataset, epochs):
 		if(hvd.rank()==0):
 			save_images(OUTPUT_PATH, epoch,sample_images, generator, hvd.rank()==0)
 			logger.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
+			logger.print(psutil.virtual_memory(), output_stream=sys.stdout)
 			if(epoch%5==0):
 				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
