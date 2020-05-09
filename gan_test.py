@@ -10,9 +10,10 @@ from tensorflow.train import AdamOptimizer as Adam
 import numpy as np
 import os 
 import time
-import cv2 as cv
 import sys
 import psutil
+
+
 # Need this for distributed training
 import horovod.tensorflow as hvd
 
