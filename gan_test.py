@@ -90,11 +90,11 @@ train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, GLOBAL_BATCH_SIZE)
 
 logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
-logger.print(f"Distributing the dataset")
+logger.print(f"Distributing the dataset", output_stream=sys.stdout)
 
 distributed_dataset = mirrored_strategy.experimental_distribute_dataset(train_dataset)
 
-logger.print(f"Dataset Distributed")
+logger.print(f"Dataset Distributed", output_stream=sys.stdout)
 
 sample_images = get_sample(TRAINING_DATA_PATH)
 
@@ -164,7 +164,7 @@ def train_step(images):
 		
 		return gen_loss, disc_loss
 	
-	gen_loss, disc_loss = mirrored_strategy.run(step_fn, args=(images, ))
+	gen_loss, disc_loss = mirrored_strategy.experimental_run_v2(step_fn, args=(images, ))
 
 	gen_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, gen_loss, axis=0)
 	disc_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, disc_loss, axis=0)
