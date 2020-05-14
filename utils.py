@@ -25,7 +25,7 @@ def get_dataset(path, buffer_size, batch_size):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	
-	img_ds = list_ds.prefetch(tf.data.experimental.AUTOTUNE).shuffle(buffer_size).repeat().map(parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(batch_size)
+	img_ds = list_ds.prefetch(tf.data.experimental.AUTOTUNE).shuffle(buffer_size).map(parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(batch_size)
 	return img_ds
 
 def get_sample(path):
