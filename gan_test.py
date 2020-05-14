@@ -165,8 +165,10 @@ def train_step(images):
 		return gen_loss, disc_loss
 	
 	gen_loss, disc_loss = mirrored_strategy.experimental_run_v2(step_fn, args=(images, ))
-
-	return gen_loss, disc_loss
+	
+	gen_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, gen_loss, axis=None)
+	disc_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, disc_loss, axis=None)
+	return gen_mean_loss, disc_mean_loss
 
 
 
@@ -192,15 +194,13 @@ def train(dataset, epochs):
 			epoch_elapsed = time.time()-epoch_start
 		
 			
-			# save_images(OUTPUT_PATH, epoch,sample_images, generator)
+			save_images(OUTPUT_PATH, epoch,sample_images, generator)
 			logger.print(f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
-			print(f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}')
 
-		#	logger.print(psutil.virtual_memory(), output_stream=sys.stdout)
-			#if(epoch%5==0):
-			#	logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
-			#	generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
-			#	discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
+			if(epoch%5==0):
+				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
+				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
+				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 	elapsed = time.time()-start
 
