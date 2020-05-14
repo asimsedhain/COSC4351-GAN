@@ -51,12 +51,12 @@ matplotlib.use("Agg")
 TRAINING_DATA_PATH = "../test"
 
 # All the output and models will be saved inside the checkpoint path
-CHECKPOINT_PATH = "./test_horovod"
+CHECKPOINT_PATH = "./output/singularity_multigpu"
 
 # Sample images will be stored in the output path
 OUTPUT_PATH = os.path.join(CHECKPOINT_PATH, "output") 
 # Path for the model. It is inside the checkpoint directory
-MODEL_PATH = os.path.join(CHECKPOINT_PATH,"Models")
+MODEL_PATH = os.path.join(CHECKPOINT_PATH,"models")
 
 # If INITIAL_TRAINING is set to False, generator and discriminator will be loaded from the following path
 GENERATOR_PATH_PRE = os.path.join(MODEL_PATH,"color_generator_main.h5")
