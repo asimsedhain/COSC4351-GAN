@@ -48,7 +48,7 @@ mirrored_strategy = tf.distribute.MirroredStrategy()
 matplotlib.use("Agg")
 
 # Training data directory
-TRAINING_DATA_PATH = "../test"
+TRAINING_DATA_PATH = "../train_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./output/singularity_multigpu"
