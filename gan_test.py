@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Input, Reshape, Dropout, Dense, Flatten, Bat
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.layers import UpSampling2D, Conv2D
 from tensorflow.keras.models import Sequential, Model, load_model
-from tensorflow.train import AdamOptimizer as Adam
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 import os 
 import time
@@ -14,8 +14,6 @@ import sys
 import psutil
 
 
-# Need this for distributed training
-import horovod.tensorflow as hvd
 
 
 import matplotlib
@@ -35,28 +33,22 @@ from utils import logger
 
 
 
-# Horovod: initialize Horovod.
-hvd.init()
-
-# Horovod: pin GPU to be used to process local rank (one GPU per process)
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-config.gpu_options.visible_device_list = str(hvd.local_rank())
 
 
-tf.enable_eager_execution(config=config)
 
 # logger object
-logger = logger(hvd)
+logger = logger()
 
 # Configration
+
+# Strategy for distributed training
+mirrored_strategy = tf.distribute.MirroredStrategy()
 
 # Need to use "Agg" for machines without a display. Or it wil result in segmentation fault
 matplotlib.use("Agg")
 
 # Training data directory
 TRAINING_DATA_PATH = "../test"
-DATASET_SIZE = 1000
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./test_horovod"
@@ -83,6 +75,7 @@ GENERATE_SQUARE = 128
 
 EPOCHS = 200
 BATCH_SIZE = 32
+GLOBAL_BATCH_SIZE = BATCH_SIZE*mirrored_strategy.num_replicas_in_sync
 BUFFER_SIZE = 2**15
 
 
@@ -93,9 +86,15 @@ logger.print(f"Will generate {GENERATE_SQUARE}px square images.", output_stream=
 
 logger.print(f"Images being loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
 
-train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, BATCH_SIZE)
+train_dataset = get_dataset(TRAINING_DATA_PATH, BUFFER_SIZE, GLOBAL_BATCH_SIZE)
 
 logger.print(f"Images loaded from {TRAINING_DATA_PATH}", output_stream=sys.stdout)
+
+logger.print(f"Distributing the dataset")
+
+distributed_dataset = mirrored_strategy.experimental_distribute_dataset(train_dataset)
+
+logger.print(f"Dataset Distributed")
 
 sample_images = get_sample(TRAINING_DATA_PATH)
 
@@ -104,95 +103,99 @@ sample_images = tf.convert_to_tensor([i.numpy() for i in sample_images.take(1)])
 
 # Checks if you want to continue training model from disk or start a new
 # Set INITIAL_TRAINING to true if you want to continue training
-if(INITIAL_TRAINING):
-	logger.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
-	generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
-	discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
-	logger.print("Generator and Discriminator initialized", output_stream=sys.stdout)
-else:
-	logger.print("Loading model from memory", output_stream=sys.stdout)
-	if os.path.isfile(GENERATOR_PATH_PRE):
-		generator = tf.keras.models.load_model(GENERATOR_PATH_PRE)
-		logger.print("Generator loaded", output_stream=sys.stdout)
+with mirrored_strategy.scope():
+	if(INITIAL_TRAINING):
+		logger.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
+		generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
+		discriminator = build_discriminator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 2))
+		logger.print("Generator and Discriminator initialized", output_stream=sys.stdout)
 	else:
-		logger.print("No generator file found", output_stream=sys.stdout)
-	if os.path.isfile(DISCRIMINATOR_PATH_PRE):
-		
-		discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH_PRE)
-		logger.print("Discriminator loaded", output_stream=sys.stdout)
-	else:
-		logger.print("No discriminator file found", output_stream=sys.stdout)
-		
+		logger.print("Loading model from memory", output_stream=sys.stdout)
+		if os.path.isfile(GENERATOR_PATH_PRE):
+			generator = tf.keras.models.load_model(GENERATOR_PATH_PRE)
+			logger.print("Generator loaded", output_stream=sys.stdout)
+		else:
+			logger.print("No generator file found", output_stream=sys.stdout)
+		if os.path.isfile(DISCRIMINATOR_PATH_PRE):
+			
+			discriminator = tf.keras.models.load_model(DISCRIMINATOR_PATH_PRE)
+			logger.print("Discriminator loaded", output_stream=sys.stdout)
+		else:
+			logger.print("No discriminator file found", output_stream=sys.stdout)
+			
 
 
 
 
 
 
-# scaling learning rate by number of GPUs.
-generator_optimizer = Adam(2e-4 * hvd.size(),0.5)
-discriminator_optimizer = Adam(2e-4 * hvd.size(),0.5)
+# Initializing the optimizers
+with mirrored_strategy.scope():
+	generator_optimizer = Adam(2e-4 ,0.5)
+	discriminator_optimizer = Adam(2e-4 ,0.5)
 
 
 # This is the training step function. It consums one batch and applies the gradient
+@tf.function
 def train_step(images):
+	def step_fn(images):
 
-	seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
-	real = images[:,:, :, 1:3]
-	
-	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-		generated_images = generator(seed, training=True)
-		real_output = discriminator(real, training=True)
-		fake_output = discriminator(generated_images, training=True)
-
-		gen_loss = generator_loss(fake_output, real, generated_images)
-		disc_loss = discriminator_loss(real_output, fake_output)
-
-	gen_tape = hvd.DistributedGradientTape(gen_tape)
-	disc_tape = hvd.DistributedGradientTape(disc_tape)
-
-
-	gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-	gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
-
-	generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-	discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
-
-
+		seed = tf.reshape(images[:,:, :, 0], (images.shape[0], GENERATE_SQUARE, GENERATE_SQUARE, 1))
+		real = images[:,:, :, 1:3]
 		
+		with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+			generated_images = generator(seed, training=True)
+			real_output = discriminator(real, training=True)
+			fake_output = discriminator(generated_images, training=True)
+
+			gen_loss = generator_loss(fake_output, real, generated_images)
+			disc_loss = discriminator_loss(real_output, fake_output)
+			
+			gen_loss = tf.reduce_sum(gen_loss) * (1.0 / GLOBAL_BATCH_SIZE)
+			disc_loss = tf.reduce_sum(disc_loss)*(1.0/GLOBAL_BATCH_SIZE)
 
 
-	return gen_loss,disc_loss
+
+		gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+		gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+
+		generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+		discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+		
+		return gen_loss, disc_loss
+	
+	gen_loss, disc_loss = mirrored_strategy.run(step_fn, args=(images, ))
+
+	gen_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, gen_loss, axis=0)
+	disc_mean_loss = mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, disc_loss, axis=0)
+
+
+	return gen_mean_loss,disc_mean_loss
 
 
 
 # Main training loop
 def train(dataset, epochs):
 	start = time.time()
-	batch =0	
 	for epoch in range(epochs):
 		epoch_start = time.time()
 
 		gen_loss_list = []
 		disc_loss_list = []
 
-		for image_batch in dataset.take(DATASET_SIZE//(BATCH_SIZE*hvd.size())):
-			losses = train_step(image_batch)
-			gen_loss_list.append(losses[0])
-			disc_loss_list.append(losses[1])
-			if(batch==0 and epoch ==0):
-				batch=1
-				hvd.broadcast_variables(generator.variables, root_rank=0)
-				hvd.broadcast_variables(discriminator.variables, root_rank=0)
-				hvd.broadcast_variables(generator_optimizer.variables(), root_rank=0)
-				hvd.broadcast_variables(discriminator_optimizer.variables(), root_rank=0)
-		g_loss = sum(gen_loss_list) / len(gen_loss_list)
-		d_loss = sum(disc_loss_list) / len(disc_loss_list)
+		with mirrored_strategy.scope():
+			for image_batch in distributed_dataset:
+				losses = train_step(image_batch)
+				gen_loss_list.append(losses[0])
+				disc_loss_list.append(losses[1])
+		
+			g_loss = sum(gen_loss_list) / len(gen_loss_list)
+			d_loss = sum(disc_loss_list) / len(disc_loss_list)
 
-		epoch_elapsed = time.time()-epoch_start
-	
-		if(hvd.rank()==0):
-			save_images(OUTPUT_PATH, epoch,sample_images, generator, hvd.rank()==0)
+			epoch_elapsed = time.time()-epoch_start
+		
+			
+			save_images(OUTPUT_PATH, epoch,sample_images, generator)
 			logger.print (f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
 			logger.print(psutil.virtual_memory(), output_stream=sys.stdout)
 			if(epoch%5==0):
@@ -201,8 +204,8 @@ def train(dataset, epochs):
 				discriminator.save(os.path.join(MODEL_PATH,f"color_discriminator_{epoch}.h5"))
 
 	elapsed = time.time()-start
-	if(hvd.rank()==0):
-		logger.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
+
+	logger.print (f'Training time: {(elapsed)}', output_stream=sys.stdout)
 
 
 
@@ -216,7 +219,7 @@ logger.print("Training Finished", output_stream=sys.stdout)
 
 
 # saving the model to disk
-if hvd.rank() == 0:
+with mirrored_strategy.scope():
 	logger.print("Saving Final Models", output_stream=sys.stdout)
 	generator.save(GENERATOR_PATH_FINAL)
 	discriminator.save(DISCRIMINATOR_PATH_FINAL)

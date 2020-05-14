@@ -16,7 +16,6 @@
 echo "Setting env for Maverick2"
 source ./maverick_init.sh
 
-export IBRUN_TASKS_PER_NODE=4
 
-ibrun -np 16 python3 gan_test.py
+python3 gan_test.py
 echo "Complete"

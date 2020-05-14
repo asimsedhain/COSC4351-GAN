@@ -36,7 +36,7 @@ def get_sample(path):
 	return img_ds
 
 # Helper method for saving an output file while training.
-def save_images(path,cnt,sample_images, generator, save_or_not):
+def save_images(path,cnt,sample_images, generator):
 	
 	last_dimension_axis = len(sample_images.shape) - 1
 	y, u, v = tf.split(sample_images, 3, axis=last_dimension_axis)
@@ -67,16 +67,15 @@ def save_images(path,cnt,sample_images, generator, save_or_not):
 		plt.title("Model Generated")
 		plt.imshow(generated_images[i])
 	
-	if(save_or_not):
-		fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
+	
+	fig.savefig(os.path.join(path,f'test_{cnt}.png'), dpi =fig.dpi)
 	plt.close(fig)
 	print(f"Saved Image: test_{cnt}.png")
 
 # Logger object for loggint from the correct rank
 # Logs with a timestamp and to the passed output stream
 class logger(object):
-	def __init__(self, hvd):
-		self.hvd = hvd
+
 	
 	def print(self, str, output_stream):
-		tf.print(f"{datetime.now()} GPU:{self.hvd.rank()}: {str}", output_stream = output_stream)
+		tf.print(f"{datetime.now()}: {str}", output_stream = output_stream)
