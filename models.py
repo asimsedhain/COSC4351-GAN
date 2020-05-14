@@ -116,19 +116,21 @@ def build_generator(channels=2, image_shape=(128, 128, 1)):
     return tf.keras.Model(inputs=input_layer, outputs=output_layer, name="Generator")
 
 
-# This method returns a helper function to compute cross entropy loss
-cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-mean_absolute = tf.keras.losses.MeanAbsoluteError()
+
 
 
 def discriminator_loss(real_output, fake_output):
-    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
-    fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
-    total_loss = real_loss + fake_loss
-    return total_loss
+	cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+	mean_absolute = tf.keras.losses.MeanAbsoluteError()
+	real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+	fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
+	total_loss = real_loss + fake_loss
+	return total_loss
 
 
 def generator_loss(fake_output, real_images, gen_images):
-    return cross_entropy(tf.ones_like(fake_output), fake_output) + 100 * mean_absolute(
+	cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+	mean_absolute = tf.keras.losses.MeanAbsoluteError()
+	return cross_entropy(tf.ones_like(fake_output), fake_output) + 100 * mean_absolute(
         real_images, gen_images
     )
