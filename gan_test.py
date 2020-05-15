@@ -148,10 +148,10 @@ def train_step(images):
 			real_output = discriminator(real, training=True)
 			fake_output = discriminator(generated_images, training=True)
 
-			gen_loss_CE, gen_loss_MEAN = generator_loss(fake_output, real, generated_images, 100)
+			gen_loss = generator_loss(fake_output, real, generated_images, 100)
 			disc_loss = discriminator_loss(real_output, fake_output)
 			
-			gen_loss = (tf.reduce_sum(gen_loss_CE)+tf.reduce_sum(gen_loss_MEAN)) * (1.0 / GLOBAL_BATCH_SIZE)
+			gen_loss = tf.reduce_sum(gen_loss) * (1.0 / GLOBAL_BATCH_SIZE)
 			disc_loss = tf.reduce_sum(disc_loss)*(1.0/GLOBAL_BATCH_SIZE)
 
 
