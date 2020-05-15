@@ -48,7 +48,7 @@ mirrored_strategy = tf.distribute.MirroredStrategy()
 matplotlib.use("Agg")
 
 # Training data directory
-TRAINING_DATA_PATH = "../test"
+TRAINING_DATA_PATH = "../train_set"
 
 # All the output and models will be saved inside the checkpoint path
 CHECKPOINT_PATH = "./output/singularity_multigpu"
@@ -196,7 +196,7 @@ def train(dataset, epochs):
 			
 			save_images(OUTPUT_PATH, epoch,sample_images, generator)
 			logger.print(f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
-
+			logger.print(psutil.virtual_memory(), output_stream=sys.stdout)
 			if(epoch%5==0):
 				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
@@ -212,7 +212,7 @@ def train(dataset, epochs):
 logger.print("Starting Training", output_stream=sys.stdout)
 
 # Starting the training
-train(train_dataset, EPOCHS)
+train(distributed_dataset, EPOCHS)
 
 logger.print("Training Finished", output_stream=sys.stdout)
 

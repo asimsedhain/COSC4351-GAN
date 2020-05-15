@@ -11,20 +11,20 @@ tf.enable_eager_execution(config=config)
 
 
 # Training data directory
-TRAINING_DATA_PATH = "../val_set"
+TRAINING_DATA_PATH = "../train_set"
 
 # All the output and models will be saved inside the checkpoint path
-CHECKPOINT_PATH = "./test_horovod"
+CHECKPOINT_PATH = "./output/singularity_multigpu"
 
 # Sample images will be stored in the output path
 OUTPUT_PATH = os.path.join(CHECKPOINT_PATH, "output") 
 
 # Path for the model. It is inside the checkpoint directory
-MODEL_PATH = os.path.join(CHECKPOINT_PATH,"Models")
+MODEL_PATH = os.path.join(CHECKPOINT_PATH,"models")
 
 
 # Path for the final models to be saved to after training
-GENERATOR_PATH_FINAL = os.path.join(MODEL_PATH,"color_generator_160.h5")
+# GENERATOR_PATH_FINAL = os.path.join(MODEL_PATH,"color_generator_160.h5")
 
 
 tf.print("Loading model from memory", output_stream=sys.stdout)
