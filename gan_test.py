@@ -148,10 +148,10 @@ def train_step(images):
 			real_output = discriminator(real, training=True)
 			fake_output = discriminator(generated_images, training=True)
 
-			gen_loss_CE, gen_loss_MEAN = generator_loss(fake_output, real, generated_images, 100)
+			gen_loss = generator_loss(fake_output, real, generated_images, 100)
 			disc_loss = discriminator_loss(real_output, fake_output)
 			
-			gen_loss = (tf.reduce_sum(gen_loss_CE)+tf.reduce_sum(gen_loss_MEAN)) * (1.0 / GLOBAL_BATCH_SIZE)
+			gen_loss = tf.reduce_sum(gen_loss) * (1.0 / GLOBAL_BATCH_SIZE)
 			disc_loss = tf.reduce_sum(disc_loss)*(1.0/GLOBAL_BATCH_SIZE)
 
 
@@ -196,7 +196,7 @@ def train(dataset, epochs):
 			
 			save_images(OUTPUT_PATH, epoch,sample_images, generator)
 			logger.print(f'Epoch: {epoch+1}, gen loss={g_loss},disc loss={d_loss}, {epoch_elapsed}', output_stream=sys.stdout)
-			logger.print(psutil.virtual_memory(), output_stream=sys.stdout)
+
 			if(epoch%5==0):
 				logger.print(f"Saving Model for Step {epoch}", output_stream=sys.stdout)
 				generator.save(os.path.join(MODEL_PATH,f"color_generator_{epoch}.h5"))
@@ -212,7 +212,7 @@ def train(dataset, epochs):
 logger.print("Starting Training", output_stream=sys.stdout)
 
 # Starting the training
-train(distributed_dataset, EPOCHS)
+train(train_dataset, EPOCHS)
 
 logger.print("Training Finished", output_stream=sys.stdout)
 

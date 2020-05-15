@@ -129,6 +129,6 @@ def discriminator_loss(real_output, fake_output):
 
 
 def generator_loss(fake_output, real_images, gen_images, lam):
-    return cross_entropy(tf.ones_like(fake_output), fake_output) , lam * mean_absolute(
+    return cross_entropy(tf.ones_like(fake_output), fake_output) + lam * mean_absolute(
         real_images, gen_images
     )
