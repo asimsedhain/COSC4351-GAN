@@ -20,6 +20,6 @@ Here are some of our current results:
 The ground truth represents the original image and the other is what our current model produced.
 
 ## TODO
-* Add user guided colorization in the model
-* Deploy the model
-* Add user interaction interface
+- [ ] Add user guided colorization in the model
+- [x] Deploy the model [(It can be viewed here)](http://color-this.eastus.cloudapp.azure.com/)
+- [ ] Add user interaction interface
