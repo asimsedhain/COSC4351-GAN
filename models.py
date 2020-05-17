@@ -138,13 +138,13 @@ def build_generator(channels=2, image_shape=(128, 128, 1), filter_nums=32):
 	x = down_resblock(x, filter_nums, strides=1)
 
 	filter_nums//=2
-	x = up_resblock(x, filter_nums, add_layer=x_128)
+	x = up_resblock(x, filter_nums, add_layer=x_128, predicate = 1)
 
 	filter_nums//=2
-	x = up_resblock(x, filter_nums, add_layer=x_64)
+	x = up_resblock(x, filter_nums, add_layer=x_64, predicate = 1)
 
 	filter_nums//=2
-	x = up_resblock(x, filter_nums, add_layer=x_32)
+	x = up_resblock(x, filter_nums, add_layer=x_32, predicate = 1)
 
 
 	x = down_resblock(x, filter_nums, strides = 1)
@@ -165,12 +165,12 @@ def down_resblock(x, filter_num, kernel_size=3, strides=1, padding="same", momen
 	x = Activation(activation)(x)
 	return x
 
-@tf.function
-def up_resblock(x, filter_num, add_layer=None,kernel_size=3, padding="same", momentum=0.8, activation="relu" ):
+def up_resblock(x, filter_num, add_layer=None,kernel_size=3, padding="same", momentum=0.8, activation="relu", predicate=0 ):
 	x = UpSampling2D(size=(2, 2))(x)
 	x = Conv2D(filter_num, kernel_size=kernel_size, padding=padding)(x)
 	x = BatchNormalization(momentum=momentum)(x)
-	x = tf.cond(add_layer==None, lambda: x, lambda: Add()([x, add_layer]))
+	
+	x = tf.cond(tf.less(tf.constant(predicate), tf.constant(1)), lambda: x, lambda: Add()([x, add_layer]))
 	x = Activation("relu")(x)
 	return x
 
