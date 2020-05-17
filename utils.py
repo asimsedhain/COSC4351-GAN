@@ -79,3 +79,9 @@ class logger(object):
 	
 	def print(self, str, output_stream):
 		tf.print(f"{datetime.now()}: {str}", output_stream = output_stream)
+
+
+def check_folder(log_dir):
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    return log_dir
