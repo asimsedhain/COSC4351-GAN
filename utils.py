@@ -32,7 +32,7 @@ def get_sample(path):
 	train_path = pathlib.Path(path)
 	list_ds = tf.data.Dataset.list_files(str(train_path/'*'))
 	list_ds = list_ds.take(16)
-	img_ds = list_ds.map(parse_image).batch(16)
+	img_ds = list_ds.prefetch(tf.data.experimental.AUTOTUNE).map(parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE).batch(16)
 	return img_ds
 
 # Helper method for saving an output file while training.
