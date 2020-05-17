@@ -12,14 +12,12 @@ from tensorflow.keras.layers import (
     Add,
 	LeakyReLU,
 	UpSampling2D,
-	Conv2D,
-	Sequential,
-	Model,
-	load_model,
-	shape_list
+	Conv2D
 )
+from tensorflow import shape as shape_list
+from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
-weight_init = tf.truncated_normal_initializer(mean=0.0, stddev=0.02)
+weight_init = tf.keras.initializers.TruncatedNormal(mean=0.1, stddev=0.02)
 weight_regularizer = None
 
 def build_discriminator(image_shape=(128,128, 2)):
@@ -139,13 +137,13 @@ def build_generator(channels=2, image_shape=(128, 128, 1), filter_nums=32):
 	x = down_resblock(x, filter_nums, strides=1)
 	x = down_resblock(x, filter_nums, strides=1)
 
-	filter_nums/=2
+	filter_nums//=2
 	x = up_resblock(x, filter_nums, add_layer=x_128)
 
-	filter_nums/=2
+	filter_nums//=2
 	x = up_resblock(x, filter_nums, add_layer=x_64)
 
-	filter_nums/=2
+	filter_nums//=2
 	x = up_resblock(x, filter_nums, add_layer=x_32)
 
 
@@ -167,12 +165,12 @@ def down_resblock(x, filter_num, kernel_size=3, strides=1, padding="same", momen
 	x = Activation(activation)(x)
 	return x
 
+@tf.function
 def up_resblock(x, filter_num, add_layer=None,kernel_size=3, padding="same", momentum=0.8, activation="relu" ):
 	x = UpSampling2D(size=(2, 2))(x)
 	x = Conv2D(filter_num, kernel_size=kernel_size, padding=padding)(x)
 	x = BatchNormalization(momentum=momentum)(x)
-	if(add_layer):
-		x = Add()([x, add_layer])
+	x = tf.cond(add_layer==None, lambda: x, lambda: Add()([x, add_layer]))
 	x = Activation("relu")(x)
 	return x
 
