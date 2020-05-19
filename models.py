@@ -21,7 +21,6 @@ weight_init = tf.keras.initializers.TruncatedNormal(mean=0.1, stddev=0.02)
 weight_regularizer = None
 
 def build_discriminator(image_shape=(128,128, 2)):
-	model = Sequential()
 	input_layer = Input(image_shape)
 	x = Conv2D(32, 3, 2, "same")(input_layer)
 	x = LeakyReLU(0.2)(x)
@@ -54,7 +53,7 @@ def build_discriminator(image_shape=(128,128, 2)):
 
 
 
-def build_generator(channels=2, image_shape=(128, 128, 1), filter_nums=32):
+def build_generator(image_shape=(128, 128, 1), filter_nums=32):
 	input_layer = Input(shape=image_shape)
 	x = down_resblock(input_layer, filter_nums)
 	x_32 = x

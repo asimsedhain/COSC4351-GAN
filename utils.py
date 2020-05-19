@@ -12,8 +12,16 @@ def parse_image(filename):
 	image = tf.io.read_file(filename)
 	image = tf.image.decode_jpeg(image, channels = 3, try_recover_truncated= True)
 	image = tf.image.convert_image_dtype(image, tf.float32)
-	image = tf.image.rgb_to_yuv(image)
 	image = tf.image.resize(image, [128, 128])
+	image = tf.image.random_flip_left_right(image)
+
+	image = tf.image.random_brightness(image, max_delta=32.0 / 255.0)
+	image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+
+	#Make sure the image is still in [0, 1]
+	image = tf.clip_by_value(image, 0.0, 1.0)
+
+	image = tf.image.rgb_to_yuv(image)
 	last_dimension_axis = len(image.shape) - 1
 	y, u, v = tf.split(image, 3, axis=last_dimension_axis)
 	y = tf.subtract(y, 0.5)
