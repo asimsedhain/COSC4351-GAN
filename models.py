@@ -25,6 +25,7 @@ def build_discriminator(image_shape=(128,128, 2)):
 	x = Conv2D(32, 3, 2, "same")(input_layer)
 	x = LeakyReLU(0.2)(x)
 	x = Dropout(0.25)(x)
+	x = attention(x, 32)
 	x = Conv2D(64, 3, 2, "same")(x)
 	x = ZeroPadding2D(padding=((0, 1), (0, 1)))(x)
 	x = BatchNormalization(momentum=0.8)(x)
