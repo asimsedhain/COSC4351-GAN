@@ -18,7 +18,6 @@ from tensorflow import shape as shape_list
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
 weight_init = tf.keras.initializers.TruncatedNormal(mean=0.1, stddev=0.02)
-weight_regularizer = None
 
 def build_discriminator(image_shape=(128,128, 2)):
 	input_layer = Input(image_shape)
@@ -133,10 +132,66 @@ def attention(x, ch):
 
 	return x	
 
+def vgg_layers(layer_names, model):
+    """ Creates a vgg model that returns a list of intermediate output values."""
+    # Load our model. Load pretrained VGG, trained on imagenet data
+    vgg = model
+    vgg.trainable = False
+
+    outputs = [vgg.get_layer(name).output for name in layer_names]
+
+    model = tf.keras.Model([vgg.input], outputs)
+
+    return model
+
+
+def get_conv_layers(model):
+
+	vgg = model
+	layers = []
+	for layer in vgg.layers:
+		if("conv4" in layer.name or "conv3" in layer.name):
+			layers.append(layer.name)
+	return layers
 
 # This method returns a helper function to compute cross entropy loss
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction= tf.keras.losses.Reduction.SUM)
 mean_absolute = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reduction.SUM)
+
+vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
+name = get_conv_layers(vgg)
+model = vgg_layers(name, vgg)
+
+def perceptual_loss(image_1, image_2, model):
+	# assume image_1 and image_2 are in rgb color space with a range of [0, 1]
+	preprocessed_image_1 = tf.keras.applications.vgg19.preprocess_input(image_1*255)
+	preprocessed_image_2 = tf.keras.applications.vgg19.preprocess_input(image_2*255)
+
+	output_image_1 = model(preprocessed_image_1)
+	output_image_2 = model(preprocessed_image_2)
+
+	res = []
+	for output_layer_1, output_layer_2 in zip(output_image_1, output_image_2):
+		temp = tf.math.l2_normalize(output_layer_1, axis=3)-tf.math.l2_normalize(output_layer_2, axis=3)
+		temp = tf.math.sqrt(temp**2)
+		temp = tf.reduce_sum(temp)
+		res.append(temp)
+	loss = tf.reduce_sum(res)/len(res)
+	return loss
+
+def perceptual_loss_gan_wrapper(images, generated_colors, model):
+	# images: yuv color space with a range of [-0.5, 0.5]
+	# images.shpae: (None, 128, 128, 3)
+	# generated_colors: yuv color space a range of [-0.5, 0.5]
+	# generated_colors.shape: (None, 128, 128, 2)
+	last_dimension_axis = len(images.shape) - 1
+	y, u, v = tf.split(images, 3, axis=last_dimension_axis)
+	y = tf.add(y, 0.5)
+	generated_images = tf.concat([y, generated_colors],axis = last_dimension_axis) 
+	rgb_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
+	rgb_generated_images = tf.image.yuv_to_rgb(generated_images)
+	return perceptual_loss(rgb_images, rgb_generated_images, model)
+
 
 
 def discriminator_loss(real_output, fake_output):
@@ -147,7 +202,7 @@ def discriminator_loss(real_output, fake_output):
 
 
 def generator_loss(fake_output, real_images, gen_images, lam):
-    return cross_entropy(tf.ones_like(fake_output), fake_output) + lam * mean_absolute(
-        real_images, gen_images
+    return cross_entropy(tf.ones_like(fake_output), fake_output) + lam * perceptual_loss_gan_wrapper(
+        real_images, gen_images, model
     )
 
