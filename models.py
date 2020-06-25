@@ -158,9 +158,10 @@ def get_conv_layers(model):
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction= tf.keras.losses.Reduction.SUM)
 mean_absolute = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reduction.SUM)
 
-vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
-name = get_conv_layers(vgg)
-model = vgg_layers(name, vgg)
+def build_perceptual_model():
+	vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
+	name = get_conv_layers(vgg)
+	model = vgg_layers(name, vgg)
 
 def perceptual_loss(image_1, image_2, model):
 	# assume image_1 and image_2 are in rgb color space with a range of [0, 1]
@@ -201,7 +202,7 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 
-def generator_loss(fake_output, real_images, gen_images, lam):
+def generator_loss(fake_output, real_images, gen_images, lam, model):
     return cross_entropy(tf.ones_like(fake_output), fake_output) + lam * perceptual_loss_gan_wrapper(
         real_images, gen_images, model
     )

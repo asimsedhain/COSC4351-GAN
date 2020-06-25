@@ -26,6 +26,7 @@ from models import build_discriminator
 from models import build_generator
 from models import discriminator_loss
 from models import generator_loss
+from models import build_perceptual_model
 from utils import get_dataset
 from utils import get_sample
 from utils import save_images
@@ -104,6 +105,7 @@ sample_images = tf.convert_to_tensor([i.numpy() for i in sample_images.take(1)])
 # Checks if you want to continue training model from disk or start a new
 # Set INITIAL_TRAINING to true if you want to continue training
 with mirrored_strategy.scope():
+	perceptual_model = build_perceptual_model()
 	if(INITIAL_TRAINING):
 		logger.print("Initializing Generator and Discriminator", output_stream=sys.stdout)
 		generator = build_generator(image_shape=(GENERATE_SQUARE, GENERATE_SQUARE, 1))
@@ -148,7 +150,7 @@ def train_step(images):
 			real_output = discriminator(real, training=True)
 			fake_output = discriminator(generated_images, training=True)
 
-			gen_loss = generator_loss(fake_output, images, generated_images, 100)
+			gen_loss = generator_loss(fake_output, images, generated_images, 100, perceptual_model)
 			disc_loss = discriminator_loss(real_output, fake_output)
 			
 			gen_loss = tf.reduce_sum(gen_loss) * (1.0 / GLOBAL_BATCH_SIZE)

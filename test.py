@@ -66,25 +66,25 @@ def perceptual_loss_gan_wrapper(images, generated_colors, model):
 
 mean_loss = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reduction.SUM)
 
-vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
-name = get_conv_layers(vgg)
-model = vgg_layers(name, vgg)
+# vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
+# name = get_conv_layers(vgg)
+# model = vgg_layers(name, vgg)
 
-reference = load_img("./example_01.jpg")
-liquify = load_img("./example_02.jpg")
-blur = load_img("./example_03.jpg")
-more_blur = load_img("./example_04.jpg")
-more_more_blur = load_img("./example_05.jpg")
+# reference = load_img("./example_01.jpg")
+# liquify = load_img("./example_02.jpg")
+# blur = load_img("./example_03.jpg")
+# more_blur = load_img("./example_04.jpg")
+# more_more_blur = load_img("./example_05.jpg")
 
-print(f"Perceptual Distance to Liquify: {perceptual_loss(reference, liquify, model)}")
-print(f"Perceptual Distance to blur: {perceptual_loss(reference, blur, model)}")
-print(f"Perceptual Distance to more blur: {perceptual_loss(reference, more_blur, model)}")
-print(f"Perceptual Distance to more more blur: {perceptual_loss(reference, more_more_blur, model)}")
+# print(f"Perceptual Distance to Liquify: {perceptual_loss(reference, liquify, model)}")
+# print(f"Perceptual Distance to blur: {perceptual_loss(reference, blur, model)}")
+# print(f"Perceptual Distance to more blur: {perceptual_loss(reference, more_blur, model)}")
+# print(f"Perceptual Distance to more more blur: {perceptual_loss(reference, more_more_blur, model)}")
 
-print(f"Mean Distance to Liquify: {mean_loss(reference, liquify)}")
-print(f"Mean Distance to blur: {mean_loss(reference, blur)}")
-print(f"Mean Distance to more blur: {mean_loss(reference, more_blur)}")
-print(f"Mean Distance to more more blur: {mean_loss(reference, more_more_blur)}")
+# print(f"Mean Distance to Liquify: {mean_loss(reference, liquify)}")
+# print(f"Mean Distance to blur: {mean_loss(reference, blur)}")
+# print(f"Mean Distance to more blur: {mean_loss(reference, more_blur)}")
+# print(f"Mean Distance to more more blur: {mean_loss(reference, more_more_blur)}")
 
 
 
@@ -102,4 +102,13 @@ print(f"Mean Distance to more more blur: {mean_loss(reference, more_more_blur)}"
 
 
 # print(temp.shape)
+
+
+from models import generator_loss
+
+loss = generator_loss(tf.zeros((16, 128, 128, 3)), tf.ones((16, 128, 128, 3)), tf.ones((16, 128, 128, 2)), 100)
+
+reduced_loss = tf.reduce_sum(loss) * (1.0 / 128)
+print(reduced_loss)
+
 
