@@ -33,42 +33,42 @@ def load_img(path_to_img):
     return img
 
 
+# from models import perceptual_loss
+# def perceptual_loss(image_1, image_2, model):
+# 	# assume image_1 and image_2 are in rgb color space with a range of [0, 1]
+# 	preprocessed_image_1 = tf.keras.applications.vgg19.preprocess_input(image_1*255)
+# 	preprocessed_image_2 = tf.keras.applications.vgg19.preprocess_input(image_2*255)
 
-def perceptual_loss(image_1, image_2, model):
-	# assume image_1 and image_2 are in rgb color space with a range of [0, 1]
-	preprocessed_image_1 = tf.keras.applications.vgg19.preprocess_input(image_1*255)
-	preprocessed_image_2 = tf.keras.applications.vgg19.preprocess_input(image_2*255)
+# 	output_image_1 = model(preprocessed_image_1)
+# 	output_image_2 = model(preprocessed_image_2)
 
-	output_image_1 = model(preprocessed_image_1)
-	output_image_2 = model(preprocessed_image_2)
+# 	res = []
+# 	for output_layer_1, output_layer_2 in zip(output_image_1, output_image_2):
+# 		temp = tf.math.l2_normalize(output_layer_1, axis=3)-tf.math.l2_normalize(output_layer_2, axis=3)
+# 		temp = tf.math.sqrt(temp**2)
+# 		temp = tf.reduce_sum(temp)
+# 		res.append(temp)
+# 	loss = tf.reduce_sum(res)/len(res)
+# 	return loss
 
-	res = []
-	for output_layer_1, output_layer_2 in zip(output_image_1, output_image_2):
-		temp = tf.math.l2_normalize(output_layer_1, axis=3)-tf.math.l2_normalize(output_layer_2, axis=3)
-		temp = tf.math.sqrt(temp**2)
-		temp = tf.reduce_sum(temp)
-		res.append(temp)
-	loss = tf.reduce_sum(res)/len(res)
-	return loss
+# def perceptual_loss_gan_wrapper(images, generated_colors, model):
+# 	# images: yuv color space with a range of [-0.5, 0.5]
+# 	# images.shpae: (None, 128, 128, 3)
+# 	# generated_colors: yuv color space a range of [-0.5, 0.5]
+# 	# generated_colors.shape: (None, 128, 128, 2)
+# 	last_dimension_axis = len(images.shape) - 1
+# 	y, u, v = tf.split(images, 3, axis=last_dimension_axis)
+# 	y = tf.add(y, 0.5)
+# 	generated_images = tf.concat([y, generated_colors],axis = last_dimension_axis) 
+# 	rgb_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
+# 	rgb_generated_images = tf.image.yuv_to_rgb(generated_images)
+# 	return perceptual_loss(rgb_images, rgb_generated_images, model)
 
-def perceptual_loss_gan_wrapper(images, generated_colors, model):
-	# images: yuv color space with a range of [-0.5, 0.5]
-	# images.shpae: (None, 128, 128, 3)
-	# generated_colors: yuv color space a range of [-0.5, 0.5]
-	# generated_colors.shape: (None, 128, 128, 2)
-	last_dimension_axis = len(images.shape) - 1
-	y, u, v = tf.split(images, 3, axis=last_dimension_axis)
-	y = tf.add(y, 0.5)
-	generated_images = tf.concat([y, generated_colors],axis = last_dimension_axis) 
-	rgb_images = tf.image.yuv_to_rgb(tf.concat([y, u, v], axis=last_dimension_axis))
-	rgb_generated_images = tf.image.yuv_to_rgb(generated_images)
-	return perceptual_loss(rgb_images, rgb_generated_images, model)
+# mean_loss = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reduction.SUM)
 
-mean_loss = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reduction.SUM)
-
-# vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
-# name = get_conv_layers(vgg)
-# model = vgg_layers(name, vgg)
+vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
+name = get_conv_layers(vgg)
+model = vgg_layers(name, vgg)
 
 # reference = load_img("./example_01.jpg")
 # liquify = load_img("./example_02.jpg")
@@ -106,7 +106,7 @@ mean_loss = tf.keras.losses.MeanAbsoluteError(reduction= tf.keras.losses.Reducti
 
 from models import generator_loss
 
-loss = generator_loss(tf.zeros((16, 128, 128, 3)), tf.ones((16, 128, 128, 3)), tf.ones((16, 128, 128, 2)), 100)
+loss = generator_loss(tf.zeros((16, 128, 128, 3)), tf.ones((16, 128, 128, 3)), tf.ones((16, 128, 128, 2)), 100, model)
 
 reduced_loss = tf.reduce_sum(loss) * (1.0 / 128)
 print(reduced_loss)

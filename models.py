@@ -162,6 +162,7 @@ def build_perceptual_model():
 	vgg = tf.keras.applications.VGG19(include_top=False, weights="imagenet", input_shape=(128, 128, 3))
 	name = get_conv_layers(vgg)
 	model = vgg_layers(name, vgg)
+	return model
 
 def perceptual_loss(image_1, image_2, model):
 	# assume image_1 and image_2 are in rgb color space with a range of [0, 1]
@@ -170,13 +171,13 @@ def perceptual_loss(image_1, image_2, model):
 
 	output_image_1 = model(preprocessed_image_1)
 	output_image_2 = model(preprocessed_image_2)
-
-	res = []
-	for output_layer_1, output_layer_2 in zip(output_image_1, output_image_2):
-		temp = tf.math.l2_normalize(output_layer_1, axis=3)-tf.math.l2_normalize(output_layer_2, axis=3)
+	output_images = list(zip(output_image_1, output_image_2))
+	def temp_fn(x):
+		temp = tf.math.l2_normalize(x[0], axis=3)-tf.math.l2_normalize(x[1], axis=3)
 		temp = tf.math.sqrt(temp**2)
 		temp = tf.reduce_sum(temp)
-		res.append(temp)
+		return temp
+	res = tf.vectorized_map(temp_fn, output_images) 	
 	loss = tf.reduce_sum(res)/len(res)
 	return loss
 

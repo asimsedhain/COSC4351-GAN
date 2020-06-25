@@ -33,7 +33,10 @@ from utils import save_images
 from utils import logger
 
 
-
+# Add before any TF calls
+# Initialize the keras global outside of any tf.functions
+temp = tf.zeros([16, 126, 128, 3])  # Or tf.zeros
+tf.keras.applications.vgg16.preprocess_input(temp)
 
 
 
@@ -150,7 +153,7 @@ def train_step(images):
 			real_output = discriminator(real, training=True)
 			fake_output = discriminator(generated_images, training=True)
 
-			gen_loss = generator_loss(fake_output, images, generated_images, 100, perceptual_model)
+			gen_loss = generator_loss(fake_output, images, generated_images, 10, perceptual_model)
 			disc_loss = discriminator_loss(real_output, fake_output)
 			
 			gen_loss = tf.reduce_sum(gen_loss) * (1.0 / GLOBAL_BATCH_SIZE)
